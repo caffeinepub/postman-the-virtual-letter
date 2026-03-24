@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.375rem;
+    --background: 0.93 0.04 85;
+    --foreground: 0.22 0.06 55;
+    --card: 0.96 0.035 82;
+    --card-foreground: 0.22 0.06 55;
+    --popover: 0.97 0.03 80;
+    --popover-foreground: 0.22 0.06 55;
+    --primary: 0.42 0.1 48;
+    --primary-foreground: 0.97 0.02 80;
+    --secondary: 0.87 0.05 82;
+    --secondary-foreground: 0.3 0.07 52;
+    --muted: 0.88 0.04 82;
+    --muted-foreground: 0.52 0.07 56;
+    --accent: 0.36 0.14 22;
+    --accent-foreground: 0.97 0.02 80;
+    --destructive: 0.55 0.2 22;
+    --destructive-foreground: 0.97 0 0;
+    --border: 0.74 0.07 60;
+    --input: 0.88 0.04 82;
+    --ring: 0.42 0.1 48;
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.9 0.045 80;
+    --sidebar-foreground: 0.22 0.06 55;
+    --sidebar-primary: 0.42 0.1 48;
+    --sidebar-primary-foreground: 0.97 0.02 80;
+    --sidebar-accent: 0.87 0.05 82;
+    --sidebar-accent-foreground: 0.3 0.07 52;
+    --sidebar-border: 0.74 0.07 60;
+    --sidebar-ring: 0.42 0.1 48;
+  }
+
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-lora;
+  }
+}
+
+@layer components {
+  .parchment-paper {
+    background: repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        oklch(0.74 0.07 60 / 0.2) 27px,
+        oklch(0.74 0.07 60 / 0.2) 28px
+      ),
+      linear-gradient(
+        135deg,
+        oklch(0.96 0.04 85) 0%,
+        oklch(0.93 0.045 82) 50%,
+        oklch(0.9 0.05 78) 100%
+      );
+    box-shadow: inset 0 0 30px oklch(0.74 0.07 60 / 0.1), 0 4px 20px
+      oklch(0.22 0.06 55 / 0.2);
+  }
+  .vintage-border {
+    border: 3px double oklch(0.6 0.09 55);
+    box-shadow: 0 0 0 1px oklch(0.74 0.07 60 / 0.4), inset 0 0 0 1px
+      oklch(0.74 0.07 60 / 0.2);
+  }
+  .envelope-card {
+    background: linear-gradient(
+      135deg,
+      oklch(0.96 0.04 85) 0%,
+      oklch(0.91 0.05 80) 100%
+    );
+    border: 1px solid oklch(0.74 0.07 60 / 0.6);
+    box-shadow: 2px 3px 10px oklch(0.22 0.06 55 / 0.12), inset 0 1px 0
+      oklch(1 0 0 / 0.5);
+  }
+}
+
+@keyframes bell-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: rotate(-12deg);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes compass-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-bell {
+  animation: bell-shake 1s ease-in-out;
+}
+.animate-compass {
+  animation: compass-spin 3s linear infinite;
+}
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bell,
+  .animate-compass,
+  .animate-fade-in-up {
+    animation: none;
+  }
+}

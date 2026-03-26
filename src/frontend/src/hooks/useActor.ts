@@ -25,19 +25,15 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      // Fire-and-forget: NEVER await this call.
-      // If it fails or is slow, the app must not be affected.
+      // Fire-and-forget: NEVER await this call -- it must never block actor setup
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
       actor._initializeAccessControlWithSecret(adminToken).catch(() => {});
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
-    retry: 2,
-    retryDelay: 1500,
   });
 
-  // When the actor changes, invalidate dependent queries
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({

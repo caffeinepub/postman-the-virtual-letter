@@ -13,19 +13,12 @@ export function useActor() {
     queryKey: [ACTOR_QUERY_KEY, identity?.getPrincipal().toString()],
     queryFn: async () => {
       const isAuthenticated = !!identity;
-
       if (!isAuthenticated) {
         return await createActorWithConfig();
       }
-
-      const actorOptions = {
-        agentOptions: {
-          identity,
-        },
-      };
-
-      const actor = await createActorWithConfig(actorOptions);
-      // Fire-and-forget: never await this — it must never block actor setup
+      const actor = await createActorWithConfig({ agentOptions: { identity } });
+      // MUST be fire-and-forget. Awaiting this call causes the actor query to
+      // fail/hang when the backend is slow, showing the error or loading screens.
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
       actor._initializeAccessControlWithSecret(adminToken).catch(() => {});
       return actor;
@@ -37,14 +30,10 @@ export function useActor() {
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
       });
       queryClient.refetchQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (q) => !q.queryKey.includes(ACTOR_QUERY_KEY),
       });
     }
   }, [actorQuery.data, queryClient]);
@@ -52,5 +41,6 @@ export function useActor() {
   return {
     actor: actorQuery.data || null,
     isFetching: actorQuery.isFetching,
+    isError: actorQuery.isError,
   };
 }

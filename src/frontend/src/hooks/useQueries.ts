@@ -169,6 +169,19 @@ export function useGetLetter(letterId: bigint | null) {
   });
 }
 
+export function useGetUserProfile(principal: Principal | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfile | null>({
+    queryKey: ["userProfile", principal?.toString()],
+    queryFn: async (): Promise<UserProfile | null> => {
+      if (!actor || !principal) return null;
+      return actor.getUserProfile(principal);
+    },
+    enabled: !!actor && !isFetching && !!principal,
+    staleTime: 300000,
+  });
+}
+
 export function useSignLetter() {
   const { actor } = useActor();
   const queryClient = useQueryClient();

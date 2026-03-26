@@ -34,6 +34,172 @@ function formatTime(secs: number) {
   return `${m}:${s}`;
 }
 
+// Stamp definitions — image-based stamps for India & Pakistan, CSS stamps for the rest
+const STAMP_OPTIONS = [
+  {
+    group: "India",
+    stamps: [
+      {
+        value: StampType.indian as string,
+        label: "India Post",
+        flag: "🇮🇳",
+        image: "/assets/generated/stamp-india.dim_200x240.png",
+        color: "oklch(0.38 0.18 28)",
+        bg: "oklch(0.93 0.06 50)",
+      },
+    ],
+  },
+  {
+    group: "Pakistan",
+    stamps: [
+      {
+        value: StampType.pakistani as string,
+        label: "Pakistan Post",
+        flag: "🇵🇰",
+        image: "/assets/generated/stamp-pakistan.dim_200x240.png",
+        color: "oklch(0.35 0.18 145)",
+        bg: "oklch(0.93 0.06 145)",
+      },
+    ],
+  },
+  {
+    group: "Canada",
+    stamps: [
+      {
+        value: "canada",
+        label: "Canada Post",
+        flag: "🇨🇦",
+        image: null,
+        color: "oklch(0.38 0.20 22)",
+        bg: "oklch(0.96 0.05 22)",
+      },
+    ],
+  },
+  {
+    group: "Iran",
+    stamps: [
+      {
+        value: "iran",
+        label: "Iran Post",
+        flag: "🇮🇷",
+        image: null,
+        color: "oklch(0.35 0.18 145)",
+        bg: "oklch(0.93 0.06 145)",
+      },
+    ],
+  },
+  {
+    group: "Dubai",
+    stamps: [
+      {
+        value: "dubai",
+        label: "Dubai Post",
+        flag: "🇦🇪",
+        image: null,
+        color: "oklch(0.42 0.12 52)",
+        bg: "oklch(0.95 0.06 82)",
+      },
+    ],
+  },
+  {
+    group: "London",
+    stamps: [
+      {
+        value: "london",
+        label: "Royal Mail",
+        flag: "🇬🇧",
+        image: null,
+        color: "oklch(0.38 0.20 22)",
+        bg: "oklch(0.96 0.05 22)",
+      },
+    ],
+  },
+  {
+    group: "New Zealand",
+    stamps: [
+      {
+        value: "new-zealand",
+        label: "NZ Post",
+        flag: "🇳🇿",
+        image: null,
+        color: "oklch(0.35 0.16 260)",
+        bg: "oklch(0.94 0.05 260)",
+      },
+    ],
+  },
+  {
+    group: "Australia",
+    stamps: [
+      {
+        value: "australia",
+        label: "Australia Post",
+        flag: "🇦🇺",
+        image: null,
+        color: "oklch(0.40 0.16 235)",
+        bg: "oklch(0.94 0.05 235)",
+      },
+    ],
+  },
+];
+
+function CssStamp({
+  flag,
+  label,
+  color,
+  bg,
+  selected,
+}: {
+  flag: string;
+  label: string;
+  color: string;
+  bg: string;
+  selected: boolean;
+}) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center w-20 h-24 relative"
+      style={{
+        background: bg,
+        border: `3px solid ${color}`,
+        boxShadow: selected
+          ? `0 0 0 3px ${color}, 3px 3px 0 oklch(0.22 0.06 50)`
+          : "1px 1px 4px oklch(0.22 0.06 50 / 0.18)",
+        // Perforated stamp edges via repeating gradient
+        outline: `2px dashed ${color}`,
+        outlineOffset: "-5px",
+        transform: selected ? "rotate(-3deg) scale(1.08)" : "rotate(2deg)",
+        transition: "transform 0.15s, box-shadow 0.15s",
+      }}
+    >
+      <span className="text-3xl leading-none mb-1">{flag}</span>
+      <span
+        className="font-playfair text-center leading-tight"
+        style={{
+          color,
+          fontSize: "9px",
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          maxWidth: 68,
+          textAlign: "center",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {label.toUpperCase()}
+      </span>
+      {selected && (
+        <span
+          className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+          style={{ background: color, color: "white" }}
+        >
+          ✓
+        </span>
+      )}
+    </div>
+  );
+}
+
 function VoiceRecorder({
   onRecorded,
 }: {
@@ -312,8 +478,8 @@ export default function ComposeLetter() {
   } | null>(null);
   const [letterBody, setLetterBody] = useState("");
   const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
-  const [selectedStamp, setSelectedStamp] = useState<StampType>(
-    StampType.indian,
+  const [selectedStamp, setSelectedStamp] = useState<string>(
+    StampType.indian as string,
   );
   const [envelopeFlying, setEnvelopeFlying] = useState(false);
 
@@ -382,11 +548,18 @@ export default function ComposeLetter() {
       return;
     }
 
+    // Map custom stamp values to the nearest backend StampType
+    const stampForBackend = (
+      selectedStamp === StampType.pakistani
+        ? StampType.pakistani
+        : StampType.indian
+    ) as StampType;
+
     try {
       const letterId = await sendLetter.mutateAsync({
         to: toPrincipal,
         body,
-        stamp: selectedStamp,
+        stamp: stampForBackend,
       });
 
       saveDelivery({
@@ -400,14 +573,13 @@ export default function ComposeLetter() {
       setEnvelopeFlying(true);
       toast.success(
         composeMode === "voice"
-          ? "Your voice note has been sealed and dispatched! 🎙️📬"
-          : "Your letter has been sealed and dispatched! 📬",
+          ? "Your voice note has been sealed and dispatched! \uD83C\uDF99\uFE0F\uD83D\uDCEC"
+          : "Your letter has been sealed and dispatched! \uD83D\uDCEC",
       );
       setTimeout(() => {
         setEnvelopeFlying(false);
         setLetterBody("");
         setVoiceBlob(null);
-        setSelectedRecipient(null);
         setSelectedRecipient(null);
         setUsernameSearch("");
         setComposeMode("letter");
@@ -468,7 +640,7 @@ export default function ComposeLetter() {
                     className="ml-2 font-lora text-xs"
                     style={{ color: "oklch(0.52 0.07 56)" }}
                   >
-                    — {selectedRecipient.city}
+                    \u2014 {selectedRecipient.city}
                   </span>
                 )}
               </div>
@@ -476,14 +648,13 @@ export default function ComposeLetter() {
                 type="button"
                 onClick={() => {
                   setSelectedRecipient(null);
-                  setSelectedRecipient(null);
                   setUsernameSearch("");
                   findByUsername.reset();
                 }}
                 className="text-xs font-lora"
                 style={{ color: "oklch(0.36 0.14 22)" }}
               >
-                ✕ Change
+                \u2715 Change
               </button>
             </div>
           ) : (
@@ -573,7 +744,7 @@ export default function ComposeLetter() {
                     : "oklch(0.42 0.08 52)",
               }}
             >
-              ✍️ Write Letter
+              \u270D\uFE0F Write Letter
             </button>
             <button
               type="button"
@@ -622,7 +793,7 @@ export default function ComposeLetter() {
               <Textarea
                 value={letterBody}
                 onChange={(e) => setLetterBody(e.target.value)}
-                placeholder="Dear friend,…"
+                placeholder="Dear friend,\u2026"
                 className="parchment-paper rounded-none font-lora resize-none border-0 focus-visible:ring-1 min-h-[220px] text-base leading-7"
                 style={{
                   color: "oklch(0.22 0.06 50)",
@@ -664,67 +835,82 @@ export default function ComposeLetter() {
           >
             Choose Your Stamp:
           </Label>
-          <div className="flex gap-8">
-            {[
-              {
-                type: StampType.indian,
-                src: "/assets/generated/stamp-india.dim_200x240.png",
-                label: "India Post",
-              },
-              {
-                type: StampType.pakistani,
-                src: "/assets/generated/stamp-pakistan.dim_200x240.png",
-                label: "Pakistan Post",
-              },
-            ].map(({ type, src, label }) => (
-              <button
-                type="button"
-                key={type}
-                onClick={() => setSelectedStamp(type)}
-                data-ocid={`compose.stamp_${type}_toggle`}
-                className="relative transition-all duration-200"
-                style={{
-                  transform:
-                    selectedStamp === type
-                      ? "rotate(-3deg) scale(1.08)"
-                      : "rotate(2deg)",
-                  filter:
-                    selectedStamp === type
-                      ? "drop-shadow(0 4px 12px oklch(0.22 0.06 55 / 0.4))"
-                      : "none",
-                }}
-              >
-                <img
-                  src={src}
-                  alt={label}
-                  className="w-24 h-auto"
-                  style={{
-                    outline:
-                      selectedStamp === type
-                        ? "3px solid oklch(0.36 0.14 22)"
-                        : "1px solid oklch(0.65 0.08 58)",
-                    outlineOffset: "3px",
-                  }}
-                />
-                {selectedStamp === type && (
-                  <span
-                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+          <div
+            className="flex gap-4 overflow-x-auto pb-3"
+            style={{ scrollbarWidth: "thin" }}
+            data-ocid="compose.stamp_picker"
+          >
+            {STAMP_OPTIONS.map(({ group, stamps }) =>
+              stamps.map((stamp) => (
+                <button
+                  type="button"
+                  key={stamp.value}
+                  onClick={() => setSelectedStamp(stamp.value)}
+                  data-ocid={`compose.stamp_${stamp.value}_toggle`}
+                  className="flex flex-col items-center gap-1 flex-shrink-0 transition-all duration-200"
+                  title={`${group} — ${stamp.label}`}
+                >
+                  {stamp.image ? (
+                    <div
+                      className="relative"
+                      style={{
+                        transform:
+                          selectedStamp === stamp.value
+                            ? "rotate(-3deg) scale(1.08)"
+                            : "rotate(2deg)",
+                        transition: "transform 0.15s",
+                        filter:
+                          selectedStamp === stamp.value
+                            ? "drop-shadow(0 4px 12px oklch(0.22 0.06 55 / 0.4))"
+                            : "none",
+                      }}
+                    >
+                      <img
+                        src={stamp.image}
+                        alt={stamp.label}
+                        className="w-20 h-auto"
+                        style={{
+                          outline:
+                            selectedStamp === stamp.value
+                              ? "3px solid oklch(0.36 0.14 22)"
+                              : "1px solid oklch(0.65 0.08 58)",
+                          outlineOffset: "3px",
+                        }}
+                      />
+                      {selectedStamp === stamp.value && (
+                        <span
+                          className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+                          style={{
+                            background: "oklch(0.36 0.14 22)",
+                            color: "white",
+                          }}
+                        >
+                          \u2713
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <CssStamp
+                      flag={stamp.flag}
+                      label={stamp.label}
+                      color={stamp.color}
+                      bg={stamp.bg}
+                      selected={selectedStamp === stamp.value}
+                    />
+                  )}
+                  <p
+                    className="text-center font-lora"
                     style={{
-                      background: "oklch(0.36 0.14 22)",
-                      color: "white",
+                      color: "oklch(0.42 0.10 48)",
+                      fontSize: "10px",
+                      fontWeight: selectedStamp === stamp.value ? 700 : 400,
                     }}
                   >
-                    ✓
-                  </span>
-                )}
-                <p
-                  className="text-center mt-1.5 font-lora text-xs"
-                  style={{ color: "oklch(0.42 0.10 48)" }}
-                >
-                  {label}
-                </p>
-              </button>
-            ))}
+                    {group}
+                  </p>
+                </button>
+              )),
+            )}
           </div>
         </div>
 
@@ -737,7 +923,7 @@ export default function ComposeLetter() {
               transition={{ duration: 0.85, ease: "easeIn" }}
               className="absolute top-1/2 left-1/2 text-6xl pointer-events-none z-50"
             >
-              {composeMode === "voice" ? "🎙️" : "✉"}
+              {composeMode === "voice" ? "\uD83C\uDF99\uFE0F" : "\u2709"}
             </motion.div>
           )}
         </AnimatePresence>
@@ -760,7 +946,7 @@ export default function ComposeLetter() {
           >
             {sendLetter.isPending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching…
+                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching\u2026
               </>
             ) : composeMode === "voice" ? (
               <>
@@ -768,7 +954,7 @@ export default function ComposeLetter() {
               </>
             ) : (
               <>
-                <span>📮</span> Seal &amp; Send
+                <span>\uD83D\uDCEE</span> Seal &amp; Send
               </>
             )}
           </button>

@@ -3,7 +3,12 @@ import { Bell, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { LetterDetail } from "../backend.d";
-import { useGetLetter, useInbox, useSignLetter } from "../hooks/useQueries";
+import {
+  useGetLetter,
+  useGetUserProfile,
+  useInbox,
+  useSignLetter,
+} from "../hooks/useQueries";
 import EnvelopeReveal from "./EnvelopeReveal";
 import SignatureCapture from "./SignatureCapture";
 
@@ -14,7 +19,7 @@ interface Props {
 type FlowState = "idle" | "loading" | "waiting" | "signing" | "revealing";
 
 function formatCountdown(ms: number): string {
-  if (ms <= 0) return "Arriving now…";
+  if (ms <= 0) return "Arriving now\u2026";
   const totalSec = Math.ceil(ms / 1000);
   const min = Math.floor(totalSec / 60);
   const sec = totalSec % 60;
@@ -30,6 +35,9 @@ function LetterOpener({
   onClose: () => void;
 }) {
   const { data: letterDetail, isLoading } = useGetLetter(letterId);
+  const { data: senderProfile } = useGetUserProfile(
+    letterDetail ? letterDetail.from : null,
+  );
   const signLetter = useSignLetter();
   const [flow, setFlow] = useState<FlowState>("loading");
   const [resolvedLetter, setResolvedLetter] = useState<LetterDetail | null>(
@@ -102,7 +110,7 @@ function LetterOpener({
             className="font-lora italic"
             style={{ color: "oklch(0.88 0.04 82)" }}
           >
-            Retrieving your letter…
+            Retrieving your letter\u2026
           </p>
         </div>
       </div>
@@ -140,7 +148,14 @@ function LetterOpener({
   }
 
   if (flow === "revealing" && resolvedLetter) {
-    return <EnvelopeReveal letter={resolvedLetter} onClose={onClose} />;
+    const senderName = senderProfile?.name ?? undefined;
+    return (
+      <EnvelopeReveal
+        letter={resolvedLetter}
+        senderName={senderName}
+        onClose={onClose}
+      />
+    );
   }
 
   return null;
@@ -189,7 +204,7 @@ function WaitingScreen({
             animation: "postmanWalk 0.6s ease-in-out infinite alternate",
           }}
         >
-          🚶
+          \uD83D\uDEB6
         </div>
         <div className="space-y-2">
           <p
@@ -202,7 +217,7 @@ function WaitingScreen({
             className="font-lora italic text-base"
             style={{ color: "oklch(0.80 0.08 70)" }}
           >
-            The postman is walking to your door…
+            The postman is walking to your door\u2026
           </p>
         </div>
         <div
@@ -214,7 +229,7 @@ function WaitingScreen({
           }}
           data-ocid="inbox.countdown_timer"
         >
-          {timeLeft > 0 ? formatCountdown(timeLeft) : "Arriving now…"}
+          {timeLeft > 0 ? formatCountdown(timeLeft) : "Arriving now\u2026"}
         </div>
         <button
           type="button"
@@ -253,7 +268,7 @@ export default function Inbox({ principal }: Props) {
         <div className="text-center">
           <div className="text-5xl mb-4 animate-pulse">&#128236;</div>
           <p className="font-lora italic text-muted-foreground">
-            Sorting through the mail…
+            Sorting through the mail\u2026
           </p>
         </div>
       </div>
@@ -333,7 +348,7 @@ export default function Inbox({ principal }: Props) {
                     className="font-lora italic text-xs mt-0.5 truncate"
                     style={{ color: "oklch(0.50 0.07 55)" }}
                   >
-                    Tap to open — signature required
+                    Tap to open \u2014 signature required
                   </p>
                 </div>
                 <div

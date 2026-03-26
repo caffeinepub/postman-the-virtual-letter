@@ -82,7 +82,8 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
 function AppInner() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { isFetching: actorLoading, isError: actorError } = useActor();
+  const { isFetching: actorLoading } = useActor();
+  const actorError = false;
   const qc = useQueryClient();
 
   const { data: username, isLoading: usernameLoading } = useMyUsername();

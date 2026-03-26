@@ -133,32 +133,10 @@ export default function LandingPage() {
             ) : (
               <span className="text-xl">&#128253;</span>
             )}
-            {isLoggingIn ? "Opening the post office…" : "Enter the Post Office"}
+            {isLoggingIn
+              ? "Opening the post office\u2026"
+              : "Enter the Post Office"}
           </button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.0 }}
-          className="flex items-center justify-center gap-6 mt-14"
-        >
-          {[
-            { flag: "🇮🇳", label: "India Post" },
-            { flag: "🇵🇰", label: "Pakistan Post" },
-          ].map(({ flag, label }) => (
-            <div
-              key={label}
-              className="px-4 py-2 text-sm font-lora"
-              style={{
-                border: "1px solid oklch(0.42 0.10 48 / 0.35)",
-                color: "oklch(0.42 0.10 48 / 0.7)",
-                background: "oklch(0.97 0.02 82 / 0.5)",
-              }}
-            >
-              {flag} {label}
-            </div>
-          ))}
         </motion.div>
       </motion.div>
 

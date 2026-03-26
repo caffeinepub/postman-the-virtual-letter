@@ -97,14 +97,14 @@ function VoicePlayer({ src }: { src: string }) {
           transition: "all 0.3s",
         }}
       >
-        🎙️
+        \uD83C\uDF99\uFE0F
       </motion.div>
 
       <p
         className="font-playfair text-sm font-semibold text-center"
         style={{ color: "oklch(0.32 0.08 52)" }}
       >
-        Voice Note — tap play to listen
+        Voice Note \u2014 tap play to listen
       </p>
 
       {/* Scrubber */}
@@ -169,7 +169,7 @@ function VoicePlayer({ src }: { src: string }) {
           boxShadow: "2px 2px 0 oklch(0.22 0.06 50)",
         }}
       >
-        <span className="text-base">{playing ? "⏸" : "▶"}</span>
+        <span className="text-base">{playing ? "\u23F8" : "\u25B6"}</span>
         {playing ? "Pause" : "Play Voice Note"}
       </motion.button>
     </div>
@@ -188,8 +188,8 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
 
   const stampLabel =
     letter.stamp === StampType.indian
-      ? "🇮🇳 Indian Stamp"
-      : "🇵🇰 Pakistani Stamp";
+      ? "\uD83C\uDDEE\uD83C\uDDF3 Indian Stamp"
+      : "\uD83C\uDDF5\uD83C\uDDF0 Pakistani Stamp";
 
   const isVoiceNote = letter.body.startsWith(VOICE_PREFIX);
   const audioSrc = isVoiceNote ? letter.body.slice(VOICE_PREFIX.length) : null;
@@ -215,16 +215,24 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2.5 }}
               className="text-9xl select-none"
             >
-              {isVoiceNote ? "🎙️" : "✉️"}
+              {isVoiceNote ? "\uD83C\uDF99\uFE0F" : "\u2709\uFE0F"}
             </motion.div>
             <p
               className="font-playfair text-xl text-center"
               style={{ color: "oklch(0.92 0.04 85)" }}
             >
               {isVoiceNote
-                ? "A voice note awaits you…"
-                : "A letter awaits you…"}
+                ? "A voice note awaits you\u2026"
+                : "A letter awaits you\u2026"}
             </p>
+            {senderName && (
+              <p
+                className="font-lora italic text-sm"
+                style={{ color: "oklch(0.75 0.06 75)" }}
+              >
+                From: @{senderName}
+              </p>
+            )}
             <button
               type="button"
               onClick={startOpen}
@@ -290,7 +298,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               className="font-lora italic"
               style={{ color: "oklch(0.88 0.04 82)" }}
             >
-              Opening…
+              Opening\u2026
             </p>
           </motion.div>
         )}
@@ -312,7 +320,9 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
           >
             {/* Letter header */}
             <div className="text-center pt-6 pb-2 px-8">
-              <div className="text-2xl mb-2">{isVoiceNote ? "🎙️" : "📜"}</div>
+              <div className="text-2xl mb-2">
+                {isVoiceNote ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDC"}
+              </div>
               <h2
                 className="font-playfair text-xl font-bold"
                 style={{ color: "oklch(0.25 0.07 50)" }}
@@ -326,7 +336,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                   className="font-lora italic text-sm mt-1"
                   style={{ color: "oklch(0.50 0.07 55)" }}
                 >
-                  From: {senderName}
+                  From: @{senderName}
                 </p>
               )}
               <div
@@ -363,7 +373,9 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                 className="font-lora italic text-xs mt-6 text-right"
                 style={{ color: "oklch(0.50 0.07 55)" }}
               >
-                &mdash; Delivered with care by POSTMAN
+                {senderName
+                  ? `\u2014 Sent by @${senderName} via POSTMAN`
+                  : "\u2014 Delivered with care by POSTMAN"}
               </p>
             </div>
 

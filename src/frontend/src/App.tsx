@@ -82,8 +82,7 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
 function AppInner() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { isFetching: actorLoading } = useActor();
-  const actorError = false; // actor errors handled by query client
+  const { isFetching: actorLoading, isError: actorError } = useActor();
   const qc = useQueryClient();
 
   const {
@@ -105,12 +104,12 @@ function AppInner() {
     return <LoadingScreen message="Opening post office..." />;
   }
 
-  // Actor failed -- show retry
+  // Actor failed after retries -- show retry screen
   if (actorError) {
     return (
       <ErrorScreen
         onRetry={() => {
-          qc.invalidateQueries({ queryKey: ["actor"] });
+          qc.resetQueries({ queryKey: ["actor"] });
         }}
       />
     );
@@ -125,7 +124,7 @@ function AppInner() {
     return (
       <ErrorScreen
         onRetry={() => {
-          qc.invalidateQueries({ queryKey: ["actor"] });
+          qc.resetQueries({ queryKey: ["actor"] });
           refetchUsername();
         }}
       />

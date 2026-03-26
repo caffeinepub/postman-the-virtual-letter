@@ -85,15 +85,10 @@ function AppInner() {
   const { isFetching: actorLoading, isError: actorError } = useActor();
   const qc = useQueryClient();
 
-  const {
-    data: username,
-    isLoading: usernameLoading,
-    isError: usernameError,
-    refetch,
-  } = useMyUsername();
+  const { data: username, isLoading: usernameLoading } = useMyUsername();
 
   if (isInitializing) {
-    return <LoadingScreen message="Opening post office…" />;
+    return <LoadingScreen message="Opening post office\u2026" />;
   }
 
   if (!isAuthenticated) {
@@ -101,7 +96,7 @@ function AppInner() {
   }
 
   if (actorLoading) {
-    return <LoadingScreen message="Opening post office…" />;
+    return <LoadingScreen message="Opening post office\u2026" />;
   }
 
   if (actorError) {
@@ -113,14 +108,11 @@ function AppInner() {
   }
 
   if (usernameLoading) {
-    return <LoadingScreen message="Loading your account…" />;
+    return <LoadingScreen message="Loading your account\u2026" />;
   }
 
-  if (usernameError) {
-    return <ErrorScreen onRetry={() => refetch()} />;
-  }
-
-  if (username === null || username === undefined || username === "") {
+  // No username (or fetch returned null) → show setup screen
+  if (!username) {
     return (
       <UsernameSetup
         onSuccess={() => qc.invalidateQueries({ queryKey: ["myUsername"] })}

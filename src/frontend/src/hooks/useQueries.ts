@@ -11,6 +11,15 @@ import type {
 } from "../backend.d";
 import { useActor } from "./useActor";
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Request timed out")), ms),
+    ),
+  ]);
+}
+
 export function useCallerProfile() {
   const { actor, isFetching } = useActor();
   return useQuery({
@@ -98,10 +107,16 @@ export function useMyUsername() {
     queryKey: ["myUsername"],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getMyUsername();
+      try {
+        const result = await withTimeout(actor.getMyUsername(), 12000);
+        return result;
+      } catch {
+        // If backend times out or errors, treat as no username (not a fatal error)
+        return null;
+      }
     },
     enabled: !!actor && !isFetching,
-    retry: 2,
+    retry: 1,
     staleTime: 60000,
   });
 }
@@ -148,7 +163,6 @@ export function useGetLetter(letterId: bigint | null) {
     queryKey: ["letter", letterId?.toString()],
     queryFn: async (): Promise<LetterDetail | null> => {
       if (!actor || letterId === null) return null;
-      // Cast to any to bridge backend.ts vs backend.d.ts LetterDetail types
       return (actor as any).getLetter(letterId) as Promise<LetterDetail | null>;
     },
     enabled: !!actor && !isFetching && letterId !== null,

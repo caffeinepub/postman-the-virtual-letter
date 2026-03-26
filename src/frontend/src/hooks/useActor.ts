@@ -18,38 +18,30 @@ export function useActor() {
         return await createActorWithConfig();
       }
 
-      const actorOptions = {
-        agentOptions: {
-          identity,
-        },
-      };
-
-      const actor = await createActorWithConfig(actorOptions);
-
-      // Fire-and-forget: do NOT await this -- it must never block the actor from being returned
-      const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      actor._initializeAccessControlWithSecret(adminToken).catch(() => {
-        // silently ignore -- non-critical
+      const actor = await createActorWithConfig({
+        agentOptions: { identity },
       });
+
+      // Fire-and-forget: never await this, never let it block or fail startup
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      actor._initializeAccessControlWithSecret(adminToken).catch(() => {});
 
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
-    retry: 1,
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 
+  // When the actor changes, invalidate dependent queries
   useEffect(() => {
     if (actorQuery.data) {
       queryClient.invalidateQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
       });
       queryClient.refetchQueries({
-        predicate: (query) => {
-          return !query.queryKey.includes(ACTOR_QUERY_KEY);
-        },
+        predicate: (query) => !query.queryKey.includes(ACTOR_QUERY_KEY),
       });
     }
   }, [actorQuery.data, queryClient]);

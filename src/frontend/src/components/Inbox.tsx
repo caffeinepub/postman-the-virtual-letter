@@ -110,7 +110,7 @@ function LetterOpener({
             className="font-lora italic"
             style={{ color: "oklch(0.88 0.04 82)" }}
           >
-            Retrieving your letter\u2026
+            Retrieving your letter…
           </p>
         </div>
       </div>
@@ -217,7 +217,7 @@ function WaitingScreen({
             className="font-lora italic text-base"
             style={{ color: "oklch(0.80 0.08 70)" }}
           >
-            The postman is walking to your door\u2026
+            The postman is walking to your door…
           </p>
         </div>
         <div
@@ -268,7 +268,7 @@ export default function Inbox({ principal }: Props) {
         <div className="text-center">
           <div className="text-5xl mb-4 animate-pulse">&#128236;</div>
           <p className="font-lora italic text-muted-foreground">
-            Sorting through the mail\u2026
+            Sorting through the mail…
           </p>
         </div>
       </div>

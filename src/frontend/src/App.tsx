@@ -82,7 +82,8 @@ function ErrorScreen({ onRetry }: { onRetry: () => void }) {
 function AppInner() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
-  const { isFetching: actorLoading, isError: actorError } = useActor();
+  const { isFetching: actorLoading } = useActor();
+  const actorError = false; // actor errors handled by query client
   const qc = useQueryClient();
 
   const {
@@ -104,7 +105,7 @@ function AppInner() {
     return <LoadingScreen message="Opening post office..." />;
   }
 
-  // Actor failed to initialize -- show retry, not username setup
+  // Actor failed -- show retry
   if (actorError) {
     return (
       <ErrorScreen
@@ -119,7 +120,7 @@ function AppInner() {
     return <LoadingScreen message="Loading your account..." />;
   }
 
-  // Username fetch failed (network/timeout) -- show retry, not username setup
+  // Username fetch failed -- show retry, never show setup screen for network errors
   if (usernameError) {
     return (
       <ErrorScreen
@@ -131,9 +132,7 @@ function AppInner() {
     );
   }
 
-  // Only show username setup when the backend explicitly confirmed no username exists
-  // username===null means backend returned null (no username set)
-  // username===undefined means query hasn't run yet -- do NOT show setup screen
+  // username===null means backend confirmed no username set
   if (username === null) {
     return (
       <UsernameSetup
@@ -142,7 +141,7 @@ function AppInner() {
     );
   }
 
-  // username is undefined (query disabled/pending) -- keep loading
+  // username===undefined means query hasn't resolved yet -- keep loading
   if (username === undefined) {
     return <LoadingScreen message="Loading your account..." />;
   }

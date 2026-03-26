@@ -97,7 +97,7 @@ function VoicePlayer({ src }: { src: string }) {
           transition: "all 0.3s",
         }}
       >
-        \uD83C\uDF99\uFE0F
+        🎙️
       </motion.div>
 
       <p
@@ -215,7 +215,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2.5 }}
               className="text-9xl select-none"
             >
-              {isVoiceNote ? "\uD83C\uDF99\uFE0F" : "\u2709\uFE0F"}
+              {isVoiceNote ? "🎙️" : "\u2709\uFE0F"}
             </motion.div>
             <p
               className="font-playfair text-xl text-center"
@@ -298,7 +298,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               className="font-lora italic"
               style={{ color: "oklch(0.88 0.04 82)" }}
             >
-              Opening\u2026
+              Opening…
             </p>
           </motion.div>
         )}
@@ -321,7 +321,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
             {/* Letter header */}
             <div className="text-center pt-6 pb-2 px-8">
               <div className="text-2xl mb-2">
-                {isVoiceNote ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDC"}
+                {isVoiceNote ? "🎙️" : "\uD83D\uDCDC"}
               </div>
               <h2
                 className="font-playfair text-xl font-bold"

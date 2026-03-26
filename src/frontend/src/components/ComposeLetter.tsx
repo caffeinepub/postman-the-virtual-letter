@@ -744,7 +744,7 @@ export default function ComposeLetter() {
                     : "oklch(0.42 0.08 52)",
               }}
             >
-              \u270D\uFE0F Write Letter
+              ✍️ Write Letter
             </button>
             <button
               type="button"
@@ -793,7 +793,7 @@ export default function ComposeLetter() {
               <Textarea
                 value={letterBody}
                 onChange={(e) => setLetterBody(e.target.value)}
-                placeholder="Dear friend,\u2026"
+                placeholder="Dear friend,…"
                 className="parchment-paper rounded-none font-lora resize-none border-0 focus-visible:ring-1 min-h-[220px] text-base leading-7"
                 style={{
                   color: "oklch(0.22 0.06 50)",
@@ -946,7 +946,7 @@ export default function ComposeLetter() {
           >
             {sendLetter.isPending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching\u2026
+                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching…
               </>
             ) : composeMode === "voice" ? (
               <>

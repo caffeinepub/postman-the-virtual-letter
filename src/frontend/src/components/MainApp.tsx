@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Principal } from "@icp-sdk/core/principal";
 import { Bell, LogOut, Mail, PenLine, Send, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCallerProfile, useInbox } from "../hooks/useQueries";
 import ComposeLetter from "./ComposeLetter";
@@ -93,6 +94,10 @@ export default function MainApp() {
           });
         }
         playPostalChime();
+        toast("📬 Postman has a letter for you!", {
+          description: "A new letter has arrived. Tap Inbox to read it.",
+          duration: 8000,
+        });
         break;
       }
     }

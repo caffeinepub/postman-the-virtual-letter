@@ -25,13 +25,15 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      // Fire-and-forget: NEVER await this call -- it must never block actor setup
+      // Fire-and-forget: NEVER await this call. It must NEVER block or throw.
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
       actor._initializeAccessControlWithSecret(adminToken).catch(() => {});
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
+    retry: 2,
+    retryDelay: 1000,
   });
 
   useEffect(() => {

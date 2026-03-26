@@ -10,6 +10,153 @@ interface Props {
 }
 
 const VOICE_PREFIX = "VOICE_NOTE:";
+const STAMP_PREFIX = "STAMP:";
+
+// All stamp display data keyed by stamp value
+const STAMP_DISPLAY: Record<
+  string,
+  { flag: string; label: string; color: string; bg: string; image?: string }
+> = {
+  indian: {
+    flag: "\u{1F1EE}\u{1F1F3}",
+    label: "India Post",
+    color: "oklch(0.38 0.18 28)",
+    bg: "oklch(0.93 0.06 50)",
+    image: "/assets/generated/stamp-india.dim_200x240.png",
+  },
+  pakistani: {
+    flag: "\u{1F1F5}\u{1F1F0}",
+    label: "Pakistan Post",
+    color: "oklch(0.35 0.18 145)",
+    bg: "oklch(0.93 0.06 145)",
+    image: "/assets/generated/stamp-pakistan.dim_200x240.png",
+  },
+  canada: {
+    flag: "\u{1F1E8}\u{1F1E6}",
+    label: "Canada Post",
+    color: "oklch(0.38 0.20 22)",
+    bg: "oklch(0.96 0.05 22)",
+  },
+  iran: {
+    flag: "\u{1F1EE}\u{1F1F7}",
+    label: "Iran Post",
+    color: "oklch(0.35 0.18 145)",
+    bg: "oklch(0.93 0.06 145)",
+  },
+  dubai: {
+    flag: "\u{1F1E6}\u{1F1EA}",
+    label: "Dubai Post",
+    color: "oklch(0.42 0.12 52)",
+    bg: "oklch(0.95 0.06 82)",
+  },
+  london: {
+    flag: "\u{1F1EC}\u{1F1E7}",
+    label: "Royal Mail",
+    color: "oklch(0.38 0.20 22)",
+    bg: "oklch(0.96 0.05 22)",
+  },
+  "new-zealand": {
+    flag: "\u{1F1F3}\u{1F1FF}",
+    label: "NZ Post",
+    color: "oklch(0.35 0.16 260)",
+    bg: "oklch(0.94 0.05 260)",
+  },
+  australia: {
+    flag: "\u{1F1E6}\u{1F1FA}",
+    label: "Australia Post",
+    color: "oklch(0.40 0.16 235)",
+    bg: "oklch(0.94 0.05 235)",
+  },
+};
+
+function parseLetterBody(rawBody: string) {
+  let stampValue: string = StampType.indian as string;
+  let body = rawBody;
+
+  if (body.startsWith(STAMP_PREFIX)) {
+    const rest = body.slice(STAMP_PREFIX.length);
+    const colonIdx = rest.indexOf(":");
+    if (colonIdx !== -1) {
+      stampValue = rest.slice(0, colonIdx);
+      body = rest.slice(colonIdx + 1);
+    }
+  }
+
+  const isVoice = body.startsWith(VOICE_PREFIX);
+  const audioSrc = isVoice ? body.slice(VOICE_PREFIX.length) : null;
+
+  return { stampValue, isVoice, audioSrc, textBody: body };
+}
+
+function StampBadge({ stampValue }: { stampValue: string }) {
+  const info = STAMP_DISPLAY[stampValue] ?? STAMP_DISPLAY.indian;
+
+  if (info.image) {
+    return (
+      <div className="flex flex-col items-center gap-1 my-3">
+        <div
+          style={{
+            transform: "rotate(-2deg)",
+            filter: "drop-shadow(0 4px 12px oklch(0.22 0.06 55 / 0.35))",
+          }}
+        >
+          <img
+            src={info.image}
+            alt={info.label}
+            className="w-16 h-auto"
+            style={{
+              outline: `2px solid ${info.color}`,
+              outlineOffset: "2px",
+            }}
+          />
+        </div>
+        <span
+          className="font-lora text-xs"
+          style={{ color: info.color, fontWeight: 600 }}
+        >
+          {info.flag} {info.label}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-1 my-3">
+      <div
+        className="flex flex-col items-center justify-center w-16 h-20"
+        style={{
+          background: info.bg,
+          border: `3px solid ${info.color}`,
+          outline: `2px dashed ${info.color}`,
+          outlineOffset: "-4px",
+          transform: "rotate(-2deg)",
+          boxShadow: "2px 2px 0 oklch(0.22 0.06 50)",
+        }}
+      >
+        <span className="text-2xl leading-none mb-0.5">{info.flag}</span>
+        <span
+          className="font-playfair text-center"
+          style={{
+            color: info.color,
+            fontSize: "7px",
+            fontWeight: 700,
+            letterSpacing: "0.05em",
+            maxWidth: 56,
+            textAlign: "center",
+          }}
+        >
+          {info.label.toUpperCase()}
+        </span>
+      </div>
+      <span
+        className="font-lora text-xs"
+        style={{ color: info.color, fontWeight: 600 }}
+      >
+        {info.flag} {info.label}
+      </span>
+    </div>
+  );
+}
 
 function VoicePlayer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -80,7 +227,6 @@ function VoicePlayer({ src }: { src: string }) {
         className="hidden"
       />
 
-      {/* Mic icon badge */}
       <motion.div
         animate={{ scale: playing ? [1, 1.08, 1] : 1 }}
         transition={{
@@ -97,17 +243,16 @@ function VoicePlayer({ src }: { src: string }) {
           transition: "all 0.3s",
         }}
       >
-        🎙️
+        &#127897;&#65039;
       </motion.div>
 
       <p
         className="font-playfair text-sm font-semibold text-center"
         style={{ color: "oklch(0.32 0.08 52)" }}
       >
-        Voice Note \u2014 tap play to listen
+        Voice Note &#8212; tap play to listen
       </p>
 
-      {/* Scrubber */}
       <div
         className="w-full cursor-pointer"
         role="slider"
@@ -152,7 +297,6 @@ function VoicePlayer({ src }: { src: string }) {
         </div>
       </div>
 
-      {/* Play/Pause button */}
       <motion.button
         type="button"
         onClick={togglePlay}
@@ -181,18 +325,14 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
     "envelope",
   );
 
+  const { stampValue, isVoice, audioSrc, textBody } = parseLetterBody(
+    letter.body,
+  );
+
   function startOpen() {
     setPhase("flap");
     setTimeout(() => setPhase("letter"), 1000);
   }
-
-  const stampLabel =
-    letter.stamp === StampType.indian
-      ? "\uD83C\uDDEE\uD83C\uDDF3 Indian Stamp"
-      : "\uD83C\uDDF5\uD83C\uDDF0 Pakistani Stamp";
-
-  const isVoiceNote = letter.body.startsWith(VOICE_PREFIX);
-  const audioSrc = isVoiceNote ? letter.body.slice(VOICE_PREFIX.length) : null;
 
   return (
     <div
@@ -215,13 +355,13 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               transition={{ repeat: Number.POSITIVE_INFINITY, duration: 2.5 }}
               className="text-9xl select-none"
             >
-              {isVoiceNote ? "🎙️" : "\u2709\uFE0F"}
+              {isVoice ? "\uD83C\uDF99\uFE0F" : "\u2709\uFE0F"}
             </motion.div>
             <p
               className="font-playfair text-xl text-center"
               style={{ color: "oklch(0.92 0.04 85)" }}
             >
-              {isVoiceNote
+              {isVoice
                 ? "A voice note awaits you\u2026"
                 : "A letter awaits you\u2026"}
             </p>
@@ -243,7 +383,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                 color: "oklch(0.97 0.02 80)",
               }}
             >
-              {isVoiceNote ? "Open Voice Note" : "Open Letter"}
+              {isVoice ? "Open Voice Note" : "Open Letter"}
             </button>
           </motion.div>
         )}
@@ -256,9 +396,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
             exit={{ opacity: 0 }}
             className="flex flex-col items-center gap-4"
           >
-            {/* Animated envelope opening */}
             <div className="relative" style={{ width: 200, height: 200 }}>
-              {/* Envelope body */}
               <motion.div
                 className="absolute inset-0 rounded-sm flex items-end justify-center overflow-hidden"
                 style={{
@@ -267,7 +405,6 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                   border: "2px solid oklch(0.65 0.07 60)",
                 }}
               >
-                {/* Letter sliding up */}
                 <motion.div
                   initial={{ y: 80 }}
                   animate={{ y: -10 }}
@@ -279,7 +416,6 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                   }}
                 />
               </motion.div>
-              {/* Flap */}
               <motion.div
                 initial={{ rotateX: 0, transformOrigin: "top" }}
                 animate={{ rotateX: -160 }}
@@ -298,7 +434,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
               className="font-lora italic"
               style={{ color: "oklch(0.88 0.04 82)" }}
             >
-              Opening…
+              Opening&#8230;
             </p>
           </motion.div>
         )}
@@ -321,13 +457,13 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
             {/* Letter header */}
             <div className="text-center pt-6 pb-2 px-8">
               <div className="text-2xl mb-2">
-                {isVoiceNote ? "🎙️" : "\uD83D\uDCDC"}
+                {isVoice ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDC"}
               </div>
               <h2
                 className="font-playfair text-xl font-bold"
                 style={{ color: "oklch(0.25 0.07 50)" }}
               >
-                {isVoiceNote
+                {isVoice
                   ? "Voice Note"
                   : `Letter #${String(letter.id).padStart(4, "0")}`}
               </h2>
@@ -339,24 +475,19 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                   From: @{senderName}
                 </p>
               )}
+
+              {/* Stamp display */}
+              <StampBadge stampValue={stampValue} />
+
               <div
-                className="inline-block mt-2 px-3 py-1 rounded-sm text-xs font-lora"
-                style={{
-                  background: "oklch(0.42 0.10 48)",
-                  color: "oklch(0.97 0.02 80)",
-                }}
-              >
-                {stampLabel}
-              </div>
-              <div
-                className="mt-4 mx-auto w-24 h-px"
+                className="mt-2 mx-auto w-24 h-px"
                 style={{ background: "oklch(0.65 0.07 60)" }}
               />
             </div>
 
             {/* Letter body */}
             <div className="parchment-paper mx-6 my-4 p-6">
-              {isVoiceNote && audioSrc ? (
+              {isVoice && audioSrc ? (
                 <VoicePlayer src={audioSrc} />
               ) : (
                 <motion.p
@@ -366,7 +497,7 @@ export default function EnvelopeReveal({ letter, senderName, onClose }: Props) {
                   className="font-dancing text-lg leading-relaxed whitespace-pre-wrap"
                   style={{ color: "oklch(0.22 0.06 50)" }}
                 >
-                  {letter.body}
+                  {textBody}
                 </motion.p>
               )}
               <p

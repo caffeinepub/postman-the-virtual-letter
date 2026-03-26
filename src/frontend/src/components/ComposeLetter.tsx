@@ -16,6 +16,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { StampType } from "../backend.d";
+import type { UserSearchResult } from "../backend.d";
 import {
   useCallerProfile,
   useFindUserByUsername,
@@ -34,7 +35,7 @@ function formatTime(secs: number) {
   return `${m}:${s}`;
 }
 
-// Stamp definitions — image-based stamps for India & Pakistan, CSS stamps for the rest
+// Stamp definitions
 const STAMP_OPTIONS = [
   {
     group: "India",
@@ -42,7 +43,7 @@ const STAMP_OPTIONS = [
       {
         value: StampType.indian as string,
         label: "India Post",
-        flag: "🇮🇳",
+        flag: "\u{1F1EE}\u{1F1F3}",
         image: "/assets/generated/stamp-india.dim_200x240.png",
         color: "oklch(0.38 0.18 28)",
         bg: "oklch(0.93 0.06 50)",
@@ -55,7 +56,7 @@ const STAMP_OPTIONS = [
       {
         value: StampType.pakistani as string,
         label: "Pakistan Post",
-        flag: "🇵🇰",
+        flag: "\u{1F1F5}\u{1F1F0}",
         image: "/assets/generated/stamp-pakistan.dim_200x240.png",
         color: "oklch(0.35 0.18 145)",
         bg: "oklch(0.93 0.06 145)",
@@ -68,7 +69,7 @@ const STAMP_OPTIONS = [
       {
         value: "canada",
         label: "Canada Post",
-        flag: "🇨🇦",
+        flag: "\u{1F1E8}\u{1F1E6}",
         image: null,
         color: "oklch(0.38 0.20 22)",
         bg: "oklch(0.96 0.05 22)",
@@ -81,7 +82,7 @@ const STAMP_OPTIONS = [
       {
         value: "iran",
         label: "Iran Post",
-        flag: "🇮🇷",
+        flag: "\u{1F1EE}\u{1F1F7}",
         image: null,
         color: "oklch(0.35 0.18 145)",
         bg: "oklch(0.93 0.06 145)",
@@ -94,7 +95,7 @@ const STAMP_OPTIONS = [
       {
         value: "dubai",
         label: "Dubai Post",
-        flag: "🇦🇪",
+        flag: "\u{1F1E6}\u{1F1EA}",
         image: null,
         color: "oklch(0.42 0.12 52)",
         bg: "oklch(0.95 0.06 82)",
@@ -107,7 +108,7 @@ const STAMP_OPTIONS = [
       {
         value: "london",
         label: "Royal Mail",
-        flag: "🇬🇧",
+        flag: "\u{1F1EC}\u{1F1E7}",
         image: null,
         color: "oklch(0.38 0.20 22)",
         bg: "oklch(0.96 0.05 22)",
@@ -120,7 +121,7 @@ const STAMP_OPTIONS = [
       {
         value: "new-zealand",
         label: "NZ Post",
-        flag: "🇳🇿",
+        flag: "\u{1F1F3}\u{1F1FF}",
         image: null,
         color: "oklch(0.35 0.16 260)",
         bg: "oklch(0.94 0.05 260)",
@@ -133,7 +134,7 @@ const STAMP_OPTIONS = [
       {
         value: "australia",
         label: "Australia Post",
-        flag: "🇦🇺",
+        flag: "\u{1F1E6}\u{1F1FA}",
         image: null,
         color: "oklch(0.40 0.16 235)",
         bg: "oklch(0.94 0.05 235)",
@@ -164,7 +165,6 @@ function CssStamp({
         boxShadow: selected
           ? `0 0 0 3px ${color}, 3px 3px 0 oklch(0.22 0.06 50)`
           : "1px 1px 4px oklch(0.22 0.06 50 / 0.18)",
-        // Perforated stamp edges via repeating gradient
         outline: `2px dashed ${color}`,
         outlineOffset: "-5px",
         transform: selected ? "rotate(-3deg) scale(1.08)" : "rotate(2deg)",
@@ -193,7 +193,7 @@ function CssStamp({
           className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
           style={{ background: color, color: "white" }}
         >
-          ✓
+          &#10003;
         </span>
       )}
     </div>
@@ -214,7 +214,6 @@ function VoiceRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Cleanup object URLs
   useEffect(() => {
     return () => {
       if (audioUrl) URL.revokeObjectURL(audioUrl);
@@ -328,7 +327,6 @@ function VoiceRecorder({
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-4 w-full"
         >
-          {/* Pulsing mic */}
           <div className="relative">
             <motion.div
               animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
@@ -361,7 +359,6 @@ function VoiceRecorder({
             </div>
           </div>
 
-          {/* Timer */}
           <div
             className="font-playfair text-3xl font-bold"
             style={{ color: "oklch(0.32 0.08 52)" }}
@@ -369,7 +366,6 @@ function VoiceRecorder({
             {formatTime(elapsed)}
           </div>
 
-          {/* Progress bar */}
           <div
             className="w-full max-w-xs h-2 rounded-full overflow-hidden"
             style={{ background: "oklch(0.88 0.04 78)" }}
@@ -389,7 +385,7 @@ function VoiceRecorder({
             className="font-lora text-xs italic"
             style={{ color: "oklch(0.50 0.18 22)" }}
           >
-            Recording… speak clearly
+            Recording&#8230; speak clearly
           </p>
 
           <motion.button
@@ -435,10 +431,9 @@ function VoiceRecorder({
             className="font-playfair text-sm font-semibold"
             style={{ color: "oklch(0.32 0.08 52)" }}
           >
-            Voice note recorded — {formatTime(elapsed)}
+            Voice note recorded &#8212; {formatTime(elapsed)}
           </p>
 
-          {/* Native audio player for preview - a11y: user interaction provides the accessible interface */}
           {/* biome-ignore lint/a11y/useMediaCaption: voice note preview; no transcript available at record time */}
           <audio
             controls
@@ -470,10 +465,10 @@ function VoiceRecorder({
 export default function ComposeLetter() {
   const [composeMode, setComposeMode] = useState<"letter" | "voice">("letter");
   const [usernameSearch, setUsernameSearch] = useState("");
+  const [foundUser, setFoundUser] = useState<UserSearchResult | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<{
-    name: string;
+    username: string;
     city?: string;
-    principalText?: string;
     principal?: Principal;
   } | null>(null);
   const [letterBody, setLetterBody] = useState("");
@@ -493,20 +488,27 @@ export default function ComposeLetter() {
       toast.error("Please enter a username.");
       return;
     }
+    setFoundUser(null);
     try {
       const result = await findByUsername.mutateAsync(usernameSearch.trim());
       if (result) {
-        setSelectedRecipient({
-          name: result.name,
-          city: result.city,
-          principal: result.principal,
-        });
+        setFoundUser(result);
       } else {
         toast.error("No user found with that username.");
       }
     } catch {
       toast.error("Failed to search. Please try again.");
     }
+  };
+
+  const handleSelectFoundUser = () => {
+    if (!foundUser) return;
+    setSelectedRecipient({
+      username: foundUser.username,
+      city: foundUser.city,
+      principal: foundUser.principal,
+    });
+    setFoundUser(null);
   };
 
   const handleSend = async () => {
@@ -522,33 +524,32 @@ export default function ComposeLetter() {
         toast.error("Please record a voice note before sending.");
         return;
       }
-      // Convert blob to base64 dataURL
-      body = await new Promise<string>((resolve, reject) => {
+      const audioData = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = reject;
         reader.readAsDataURL(voiceBlob);
       });
-      body = `VOICE_NOTE:${body}`;
+      // Encode stamp + voice note prefix
+      body = `STAMP:${selectedStamp}:VOICE_NOTE:${audioData}`;
     } else {
       if (!letterBody.trim()) {
         toast.error("Please write your letter.");
         return;
       }
-      body = letterBody;
+      // Encode stamp prefix so receiver can display the correct stamp
+      body = `STAMP:${selectedStamp}:${letterBody}`;
     }
 
     let toPrincipal: Principal;
     if (selectedRecipient.principal) {
       toPrincipal = selectedRecipient.principal;
-    } else if (selectedRecipient.principalText) {
-      toPrincipal = createPrincipal(selectedRecipient.principalText);
     } else {
       toast.error("Could not resolve recipient address.");
       return;
     }
 
-    // Map custom stamp values to the nearest backend StampType
+    // Backend only supports indian/pakistani — visual stamp is encoded in the body prefix
     const stampForBackend = (
       selectedStamp === StampType.pakistani
         ? StampType.pakistani
@@ -581,6 +582,7 @@ export default function ComposeLetter() {
         setLetterBody("");
         setVoiceBlob(null);
         setSelectedRecipient(null);
+        setFoundUser(null);
         setUsernameSearch("");
         setComposeMode("letter");
       }, 1000);
@@ -622,10 +624,10 @@ export default function ComposeLetter() {
           </Label>
           {selectedRecipient ? (
             <div
-              className="flex items-center justify-between px-4 py-2"
+              className="flex items-center justify-between px-4 py-3"
               style={{
                 background: "oklch(0.92 0.04 80)",
-                border: "1px solid oklch(0.65 0.08 58)",
+                border: "1px solid oklch(0.55 0.09 52)",
               }}
             >
               <div>
@@ -633,14 +635,14 @@ export default function ComposeLetter() {
                   className="font-lora font-semibold"
                   style={{ color: "oklch(0.28 0.07 52)" }}
                 >
-                  {selectedRecipient.name}
+                  @{selectedRecipient.username}
                 </span>
                 {selectedRecipient.city && (
                   <span
                     className="ml-2 font-lora text-xs"
                     style={{ color: "oklch(0.52 0.07 56)" }}
                   >
-                    \u2014 {selectedRecipient.city}
+                    &#8212; {selectedRecipient.city}
                   </span>
                 )}
               </div>
@@ -648,13 +650,14 @@ export default function ComposeLetter() {
                 type="button"
                 onClick={() => {
                   setSelectedRecipient(null);
+                  setFoundUser(null);
                   setUsernameSearch("");
                   findByUsername.reset();
                 }}
-                className="text-xs font-lora"
+                className="text-xs font-lora px-2 py-1"
                 style={{ color: "oklch(0.36 0.14 22)" }}
               >
-                \u2715 Change
+                &#215; Change
               </button>
             </div>
           ) : (
@@ -667,7 +670,10 @@ export default function ComposeLetter() {
                   />
                   <Input
                     value={usernameSearch}
-                    onChange={(e) => setUsernameSearch(e.target.value)}
+                    onChange={(e) => {
+                      setUsernameSearch(e.target.value);
+                      if (foundUser) setFoundUser(null);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") handleFindByUsername();
                     }}
@@ -700,6 +706,56 @@ export default function ComposeLetter() {
                   )}
                 </button>
               </div>
+
+              {/* Found user card — click to select */}
+              <AnimatePresence>
+                {foundUser && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="mt-2"
+                  >
+                    <button
+                      type="button"
+                      onClick={handleSelectFoundUser}
+                      data-ocid="compose.found_user_select"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left transition-all hover:brightness-95"
+                      style={{
+                        background: "oklch(0.94 0.05 85)",
+                        border: "1.5px solid oklch(0.52 0.09 52)",
+                      }}
+                    >
+                      <div>
+                        <p
+                          className="font-lora font-semibold text-sm"
+                          style={{ color: "oklch(0.25 0.07 50)" }}
+                        >
+                          @{foundUser.username}
+                        </p>
+                        {foundUser.city && (
+                          <p
+                            className="font-lora text-xs"
+                            style={{ color: "oklch(0.52 0.07 56)" }}
+                          >
+                            {foundUser.city}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className="font-lora text-xs px-3 py-1"
+                        style={{
+                          background: "oklch(0.42 0.10 48)",
+                          color: "oklch(0.97 0.02 80)",
+                        }}
+                      >
+                        Select
+                      </span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {findByUsername.isSuccess && !findByUsername.data && (
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -744,7 +800,7 @@ export default function ComposeLetter() {
                     : "oklch(0.42 0.08 52)",
               }}
             >
-              ✍️ Write Letter
+              &#9997;&#65039; Write Letter
             </button>
             <button
               type="button"
@@ -793,7 +849,7 @@ export default function ComposeLetter() {
               <Textarea
                 value={letterBody}
                 onChange={(e) => setLetterBody(e.target.value)}
-                placeholder="Dear friend,…"
+                placeholder="Dear friend, ..."
                 className="parchment-paper rounded-none font-lora resize-none border-0 focus-visible:ring-1 min-h-[220px] text-base leading-7"
                 style={{
                   color: "oklch(0.22 0.06 50)",
@@ -848,7 +904,7 @@ export default function ComposeLetter() {
                   onClick={() => setSelectedStamp(stamp.value)}
                   data-ocid={`compose.stamp_${stamp.value}_toggle`}
                   className="flex flex-col items-center gap-1 flex-shrink-0 transition-all duration-200"
-                  title={`${group} — ${stamp.label}`}
+                  title={`${group} \u2014 ${stamp.label}`}
                 >
                   {stamp.image ? (
                     <div
@@ -885,7 +941,7 @@ export default function ComposeLetter() {
                             color: "white",
                           }}
                         >
-                          ✓
+                          &#10003;
                         </span>
                       )}
                     </div>
@@ -946,7 +1002,7 @@ export default function ComposeLetter() {
           >
             {sendLetter.isPending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching…
+                <Loader2 className="w-4 h-4 animate-spin" /> Dispatching&#8230;
               </>
             ) : composeMode === "voice" ? (
               <>
@@ -954,7 +1010,7 @@ export default function ComposeLetter() {
               </>
             ) : (
               <>
-                <span>📮</span> Seal &amp; Send
+                <span>&#128238;</span> Seal &amp; Send
               </>
             )}
           </button>

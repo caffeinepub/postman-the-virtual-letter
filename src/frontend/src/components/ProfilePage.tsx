@@ -1,16 +1,31 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Loader2, Save, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  Copy,
+  Loader2,
+  Save,
+  Share2,
+  UserMinus,
+  UserPlus,
+  XCircle,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  useAcceptFriendRequest,
   useCallerProfile,
   useCheckUsername,
+  useDeclineFriendRequest,
+  useGetFriends,
+  useGetPendingFriendRequests,
+  useMyUsername,
+  useRemoveFriend,
   useSaveProfile,
+  useSendFriendRequest,
   useSetUsername,
 } from "../hooks/useQueries";
-import { useMyUsername } from "../hooks/useQueries";
 
 function validateUsername(username: string): boolean {
   if (username.length < 3 || username.length > 30) return false;
@@ -19,11 +34,21 @@ function validateUsername(username: string): boolean {
   return digitCount >= 2;
 }
 
-export default function ProfilePage() {
+interface Props {
+  defaultAddFriend?: string;
+}
+
+export default function ProfilePage({ defaultAddFriend }: Props) {
   const { data: profile, isLoading } = useCallerProfile();
   const { data: currentUsername, isLoading: usernameLoading } = useMyUsername();
   const saveProfile = useSaveProfile();
   const setUsername = useSetUsername();
+  const sendFriendRequest = useSendFriendRequest();
+  const acceptFriendRequest = useAcceptFriendRequest();
+  const declineFriendRequest = useDeclineFriendRequest();
+  const removeFriend = useRemoveFriend();
+  const { data: friends } = useGetFriends();
+  const { data: pendingRequests } = useGetPendingFriendRequests();
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -32,6 +57,8 @@ export default function ProfilePage() {
   const [newUsername, setNewUsername] = useState("");
   const [debouncedNewUsername, setDebouncedNewUsername] = useState("");
   const [usernameTouched, setUsernameTouched] = useState(false);
+
+  const [addFriendInput, setAddFriendInput] = useState(defaultAddFriend ?? "");
 
   const isNewUsernameValid = validateUsername(newUsername);
 
@@ -94,6 +121,57 @@ export default function ProfilePage() {
       }
     } catch {
       toast.error("Failed to update username.");
+    }
+  };
+
+  const handleCopyUsername = async () => {
+    if (!currentUsername) return;
+    try {
+      await navigator.clipboard.writeText(`@${currentUsername}`);
+      toast.success("Username copied!");
+    } catch {
+      toast.error("Could not copy to clipboard.");
+    }
+  };
+
+  const handleShareUsername = async () => {
+    if (!currentUsername) return;
+    const shareUrl = `${window.location.origin}?addUser=${currentUsername}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "POSTMAN",
+          text: "Add me on POSTMAN",
+          url: shareUrl,
+        });
+      } catch {
+        // user cancelled share
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied!");
+      } catch {
+        toast.error("Could not copy link.");
+      }
+    }
+  };
+
+  const handleSendFriendRequest = async () => {
+    const username = addFriendInput.trim().replace(/^@/, "");
+    if (!username) return;
+    try {
+      const result = await sendFriendRequest.mutateAsync(username);
+      if (result.__kind__ === "ok") {
+        toast.success(`Friend request sent to @${username}!`);
+        setAddFriendInput("");
+      } else {
+        toast.error(
+          result.value === "not_found" ? "User not found." : result.value,
+        );
+      }
+    } catch {
+      toast.error("Failed to send friend request.");
     }
   };
 
@@ -211,6 +289,38 @@ export default function ProfilePage() {
           >
             Share your username so others can send you letters
           </p>
+
+          {/* Copy & Share buttons */}
+          {currentUsername && (
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                type="button"
+                onClick={handleCopyUsername}
+                data-ocid="profile.copy_username_button"
+                className="flex items-center gap-1.5 px-3 py-1.5 font-lora text-xs transition-all hover:brightness-125 active:scale-95"
+                style={{
+                  border: "1px solid oklch(0.55 0.10 55 / 0.6)",
+                  color: "oklch(0.85 0.06 72)",
+                  background: "oklch(0.18 0.05 48 / 0.6)",
+                }}
+              >
+                <Copy className="w-3 h-3" /> Copy
+              </button>
+              <button
+                type="button"
+                onClick={handleShareUsername}
+                data-ocid="profile.share_username_button"
+                className="flex items-center gap-1.5 px-3 py-1.5 font-lora text-xs transition-all hover:brightness-125 active:scale-95"
+                style={{
+                  border: "1px solid oklch(0.55 0.10 55 / 0.6)",
+                  color: "oklch(0.85 0.06 72)",
+                  background: "oklch(0.18 0.05 48 / 0.6)",
+                }}
+              >
+                <Share2 className="w-3 h-3" /> Share
+              </button>
+            </div>
+          )}
         </div>
         <div
           className="px-8 py-1.5 text-center"
@@ -353,6 +463,185 @@ export default function ProfilePage() {
             <>✏ Update Username</>
           )}
         </button>
+      </div>
+
+      {/* Friends Section */}
+      <div
+        className="p-6 vintage-border space-y-5"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.96 0.04 85), oklch(0.91 0.05 78))",
+        }}
+        data-ocid="profile.friends_section"
+      >
+        <h3
+          className="font-playfair font-bold text-base"
+          style={{ color: "oklch(0.30 0.08 50)" }}
+        >
+          📮 Postal Friends
+        </h3>
+
+        {/* Add Friend */}
+        <div className="space-y-2">
+          <Label
+            htmlFor="add-friend"
+            className="font-playfair font-semibold text-sm"
+            style={{ color: "oklch(0.32 0.08 52)" }}
+          >
+            Add a Friend
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              id="add-friend"
+              value={addFriendInput}
+              onChange={(e) => setAddFriendInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSendFriendRequest();
+              }}
+              placeholder="@username"
+              className="rounded-none font-lora bg-transparent flex-1"
+              style={{
+                borderColor: "oklch(0.65 0.08 58)",
+                color: "oklch(0.28 0.07 52)",
+              }}
+              data-ocid="profile.add_friend_input"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={handleSendFriendRequest}
+              disabled={sendFriendRequest.isPending || !addFriendInput.trim()}
+              data-ocid="profile.send_friend_request_button"
+              className="flex items-center gap-1.5 px-4 py-2 font-lora text-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
+                color: "oklch(0.97 0.02 80)",
+                border: "2px solid oklch(0.55 0.09 52)",
+              }}
+            >
+              {sendFriendRequest.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UserPlus className="w-4 h-4" />
+              )}
+              Send
+            </button>
+          </div>
+        </div>
+
+        {/* Pending Requests */}
+        {pendingRequests && pendingRequests.length > 0 && (
+          <div className="space-y-2">
+            <p
+              className="font-playfair font-semibold text-sm"
+              style={{ color: "oklch(0.40 0.10 45)" }}
+            >
+              Pending Requests ({pendingRequests.length})
+            </p>
+            <div className="space-y-2">
+              {pendingRequests.map((req, i) => (
+                <div
+                  key={req.principal.toString()}
+                  data-ocid={`profile.friend_request.item.${i + 1}`}
+                  className="flex items-center justify-between px-3 py-2"
+                  style={{
+                    background: "oklch(0.93 0.04 83)",
+                    border: "1px solid oklch(0.75 0.06 62 / 0.5)",
+                  }}
+                >
+                  <span
+                    className="font-lora text-sm"
+                    style={{ color: "oklch(0.30 0.08 50)" }}
+                  >
+                    @{req.username}
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => acceptFriendRequest.mutate(req.principal)}
+                      data-ocid={`profile.accept_friend_button.${i + 1}`}
+                      className="px-2.5 py-1 font-lora text-xs transition-all hover:brightness-110"
+                      style={{
+                        background: "oklch(0.48 0.14 145)",
+                        color: "white",
+                        border: "1px solid oklch(0.40 0.14 145)",
+                      }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => declineFriendRequest.mutate(req.principal)}
+                      data-ocid={`profile.decline_friend_button.${i + 1}`}
+                      className="px-2.5 py-1 font-lora text-xs transition-all hover:brightness-110"
+                      style={{
+                        background: "oklch(0.50 0.18 22)",
+                        color: "white",
+                        border: "1px solid oklch(0.42 0.18 22)",
+                      }}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Friends List */}
+        <div className="space-y-2">
+          <p
+            className="font-playfair font-semibold text-sm"
+            style={{ color: "oklch(0.40 0.10 45)" }}
+          >
+            My Friends{" "}
+            {friends && friends.length > 0 ? `(${friends.length})` : ""}
+          </p>
+          {!friends || friends.length === 0 ? (
+            <p
+              className="font-lora italic text-xs py-3 text-center"
+              style={{ color: "oklch(0.58 0.07 58)" }}
+              data-ocid="profile.friends_empty_state"
+            >
+              No friends yet — send a request above!
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {friends.map((friend, i) => (
+                <div
+                  key={friend.principal.toString()}
+                  data-ocid={`profile.friends.item.${i + 1}`}
+                  className="flex items-center justify-between px-3 py-2"
+                  style={{
+                    background: "oklch(0.93 0.04 83)",
+                    border: "1px solid oklch(0.75 0.06 62 / 0.5)",
+                  }}
+                >
+                  <span
+                    className="font-lora text-sm"
+                    style={{ color: "oklch(0.30 0.08 50)" }}
+                  >
+                    @{friend.username}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeFriend.mutate(friend.principal)}
+                    data-ocid={`profile.remove_friend_button.${i + 1}`}
+                    className="flex items-center gap-1 px-2.5 py-1 font-lora text-xs transition-all hover:brightness-110"
+                    style={{
+                      border: "1px solid oklch(0.60 0.08 50 / 0.6)",
+                      color: "oklch(0.45 0.08 50)",
+                    }}
+                  >
+                    <UserMinus className="w-3 h-3" /> Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Profile Details */}

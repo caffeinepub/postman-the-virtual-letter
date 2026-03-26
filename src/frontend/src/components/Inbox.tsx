@@ -1,7 +1,7 @@
 import type { Principal } from "@icp-sdk/core/principal";
-import { Bell, Loader2 } from "lucide-react";
+import { Bell, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LetterDetail } from "../backend.d";
 import { useGetLetter, useInbox, useSignLetter } from "../hooks/useQueries";
 import EnvelopeReveal from "./EnvelopeReveal";
@@ -11,7 +11,16 @@ interface Props {
   principal: Principal | undefined;
 }
 
-type FlowState = "idle" | "loading" | "signing" | "revealing";
+type FlowState = "idle" | "loading" | "waiting" | "signing" | "revealing";
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Arriving now…";
+  const totalSec = Math.ceil(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  if (min > 0) return `Arriving in ${min} min ${sec} sec`;
+  return `Arriving in ${sec} sec`;
+}
 
 function LetterOpener({
   letterId,
@@ -26,13 +35,12 @@ function LetterOpener({
   const [resolvedLetter, setResolvedLetter] = useState<LetterDetail | null>(
     null,
   );
+  const [remainingMs, setRemainingMs] = useState<number>(0);
 
   // Once letter loads, decide initial flow state
   if (isLoading || flow === "loading") {
     if (!isLoading && letterDetail !== undefined && flow === "loading") {
-      // Transition out of loading
       if (letterDetail === null) {
-        // Letter not found
         return (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center"
@@ -60,12 +68,21 @@ function LetterOpener({
           </div>
         );
       }
-      // Set flow based on signed state
-      if (letterDetail.signed) {
-        setResolvedLetter(letterDetail);
+
+      const nowNs = BigInt(Date.now()) * 1_000_000n;
+      const isDelivered = letterDetail.deliveryTime <= nowNs;
+
+      setResolvedLetter(letterDetail);
+
+      if (!isDelivered) {
+        const deliveryMs = Number(
+          (letterDetail.deliveryTime - nowNs) / 1_000_000n,
+        );
+        setRemainingMs(deliveryMs);
+        setFlow("waiting");
+      } else if (letterDetail.signed) {
         setFlow("revealing");
       } else {
-        setResolvedLetter(letterDetail);
         setFlow("signing");
       }
     }
@@ -92,6 +109,19 @@ function LetterOpener({
     );
   }
 
+  if (flow === "waiting" && resolvedLetter) {
+    return (
+      <WaitingScreen
+        remainingMs={remainingMs}
+        onDelivered={() => {
+          if (resolvedLetter.signed) setFlow("revealing");
+          else setFlow("signing");
+        }}
+        onClose={onClose}
+      />
+    );
+  }
+
   if (flow === "signing") {
     return (
       <SignatureCapture
@@ -114,6 +144,99 @@ function LetterOpener({
   }
 
   return null;
+}
+
+function WaitingScreen({
+  remainingMs,
+  onDelivered,
+  onClose,
+}: {
+  remainingMs: number;
+  onDelivered: () => void;
+  onClose: () => void;
+}) {
+  const [timeLeft, setTimeLeft] = useState(remainingMs);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onDelivered();
+      return;
+    }
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        const next = prev - 1000;
+        if (next <= 0) {
+          clearInterval(interval);
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft, onDelivered]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(15, 8, 3, 0.92)" }}
+      data-ocid="inbox.delivery_waiting_state"
+    >
+      <div className="flex flex-col items-center gap-6 text-center px-8">
+        <div
+          className="text-7xl"
+          style={{
+            display: "inline-block",
+            animation: "postmanWalk 0.6s ease-in-out infinite alternate",
+          }}
+        >
+          🚶
+        </div>
+        <div className="space-y-2">
+          <p
+            className="font-playfair text-2xl font-bold"
+            style={{ color: "oklch(0.97 0.05 80)" }}
+          >
+            Your letter is on the way!
+          </p>
+          <p
+            className="font-lora italic text-base"
+            style={{ color: "oklch(0.80 0.08 70)" }}
+          >
+            The postman is walking to your door…
+          </p>
+        </div>
+        <div
+          className="px-6 py-3 font-playfair text-lg font-semibold tracking-wide"
+          style={{
+            background: "oklch(0.25 0.07 48 / 0.8)",
+            border: "2px solid oklch(0.55 0.10 55 / 0.5)",
+            color: "oklch(0.92 0.06 78)",
+          }}
+          data-ocid="inbox.countdown_timer"
+        >
+          {timeLeft > 0 ? formatCountdown(timeLeft) : "Arriving now…"}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          data-ocid="inbox.close_button"
+          className="flex items-center gap-2 mt-4 px-5 py-2 font-lora text-sm transition-opacity hover:opacity-70"
+          style={{
+            color: "oklch(0.68 0.07 60)",
+            border: "1px solid oklch(0.45 0.07 55 / 0.5)",
+          }}
+        >
+          <X className="w-4 h-4" /> Close
+        </button>
+      </div>
+      <style>{`
+        @keyframes postmanWalk {
+          from { transform: translateX(-8px) rotate(-3deg); }
+          to   { transform: translateX(8px)  rotate(3deg); }
+        }
+      `}</style>
+    </div>
+  );
 }
 
 export default function Inbox({ principal }: Props) {

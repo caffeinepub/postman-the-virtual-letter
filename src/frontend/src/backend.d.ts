@@ -32,8 +32,14 @@ export interface LetterDetail {
     stamp: StampType;
     timestamp: bigint;
     signed: boolean;
+    deliveryTime: bigint;
+}
+export interface FriendEntry {
+    username: string;
+    principal: Principal;
 }
 export type SetUsernameResult = { __kind__: "ok" } | { __kind__: "error"; value: string };
+export type FriendRequestResult = { __kind__: "ok" } | { __kind__: "error"; value: string };
 export enum StampType {
     indian = "indian",
     pakistani = "pakistani"
@@ -61,4 +67,10 @@ export interface backendInterface {
     getMyUsername(): Promise<string | null>;
     checkUsernameAvailable(username: string): Promise<boolean>;
     findUserByUsername(username: string): Promise<UserSearchResult | null>;
+    sendFriendRequest(toUsername: string): Promise<FriendRequestResult>;
+    acceptFriendRequest(fromPrincipal: Principal): Promise<boolean>;
+    declineFriendRequest(fromPrincipal: Principal): Promise<boolean>;
+    removeFriend(friendPrincipal: Principal): Promise<boolean>;
+    getFriends(): Promise<Array<FriendEntry>>;
+    getPendingFriendRequests(): Promise<Array<FriendEntry>>;
 }

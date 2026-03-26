@@ -4,7 +4,7 @@ import {
   QueryClientProvider,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import LandingPage from "./components/LandingPage";
 import MainApp from "./components/MainApp";
 import UsernameSetup from "./components/UsernameSetup";
@@ -20,7 +20,12 @@ function AppInner() {
   const { isFetching: actorLoading } = useActor();
   const qc = useQueryClient();
 
-  const { data: username, isLoading: usernameLoading } = useMyUsername();
+  const {
+    data: username,
+    isLoading: usernameLoading,
+    isError,
+    refetch,
+  } = useMyUsername();
 
   if (isInitializing || (isAuthenticated && actorLoading)) {
     return (
@@ -68,6 +73,46 @@ function AppInner() {
           >
             Loading your account…
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background:
+            "linear-gradient(160deg, oklch(0.96 0.04 85), oklch(0.90 0.06 75))",
+        }}
+      >
+        <div className="text-center px-6">
+          <div className="text-6xl mb-4">&#9993;</div>
+          <p
+            className="font-playfair text-xl mb-2"
+            style={{ color: "oklch(0.36 0.12 30)" }}
+          >
+            Could not connect to post office
+          </p>
+          <p
+            className="font-lora italic text-sm mb-6"
+            style={{ color: "oklch(0.48 0.08 54)" }}
+          >
+            Please check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="flex items-center gap-2 mx-auto px-5 py-2.5 rounded font-lora text-sm transition-opacity hover:opacity-80"
+            style={{
+              background: "oklch(0.42 0.10 48)",
+              color: "oklch(0.97 0.02 85)",
+            }}
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
         </div>
       </div>
     );

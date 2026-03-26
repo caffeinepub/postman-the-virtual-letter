@@ -26,17 +26,14 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      // Fire-and-forget: do not block actor creation on access control init
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      (actor as any)
-        ._initializeAccessControlWithSecret(adminToken)
-        .catch(() => {});
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
     // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
+    // This will cause the actor to be recreated when the identity changes
     enabled: true,
-    retry: 1,
   });
 
   // When the actor changes, invalidate dependent queries

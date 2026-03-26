@@ -18,6 +18,8 @@ actor {
   let persistentOutboxes = Map.empty<Principal, [Nat]>();
   let letterSignatures = Map.empty<Nat, Text>();
   let letterReadStatus = Map.empty<Nat, Bool>();
+  // Separate map for delivery times to avoid breaking existing Letter stable type
+  let letterDeliveryTimes = Map.empty<Nat, Int>();
 
   // Legacy stable variables (kept for upgrade compatibility)
   var nextCodeSuffix = 0;
@@ -28,6 +30,10 @@ actor {
   let usernames = Map.empty<Principal, Text>();
   let usernameIndex = Map.empty<Text, Principal>();
   let usernameChangeTimes = Map.empty<Principal, [Int]>();
+
+  // Friend system
+  let friendRequests = Map.empty<Principal, [Principal]>(); // incoming requests per user
+  let friendsList = Map.empty<Principal, [Principal]>(); // accepted friends per user
 
   type UserId = Principal;
   type LetterId = Nat;
@@ -57,6 +63,7 @@ actor {
     #delivered : Time.Time;
   };
 
+  // Letter type unchanged from original to preserve stable compatibility
   type Letter = {
     from : UserId;
     to : UserId;
@@ -75,6 +82,7 @@ actor {
     stamp : StampType;
     timestamp : Time.Time;
     signed : Bool;
+    deliveryTime : Int;
   };
 
   type UserSearchResult = {
@@ -85,6 +93,16 @@ actor {
   };
 
   type SetUsernameResult = {
+    #ok;
+    #error : Text;
+  };
+
+  type FriendEntry = {
+    username : Text;
+    principal : Principal;
+  };
+
+  type FriendRequestResult = {
     #ok;
     #error : Text;
   };
@@ -219,6 +237,11 @@ actor {
     let newLetterId = nextLetterId;
     nextLetterId += 1;
 
+    // Pseudo-random delivery time: 1-120 seconds, stored separately
+    let pseudoRandSec : Int = (newLetterId * 37 + Int.abs(Time.now()) % 1000) % 120 + 1;
+    let deliveryTime : Int = Time.now() + pseudoRandSec * 1_000_000_000;
+    letterDeliveryTimes.add(newLetterId, deliveryTime);
+
     let letter : Letter = {
       to; from = caller; body; stamp;
       status = #pending(Time.now());
@@ -254,7 +277,12 @@ actor {
           case (?v) { v };
           case (null) { false };
         };
-        ?{ id = letterId; from = letter.from; to = letter.to; body = letter.body; stamp = letter.stamp; timestamp = letter.timestamp; signed }
+        // deliveryTime: use stored value, or 0 for legacy letters (treat as already delivered)
+        let deliveryTime = switch (letterDeliveryTimes.get(letterId)) {
+          case (?t) { t };
+          case (null) { 0 };
+        };
+        ?{ id = letterId; from = letter.from; to = letter.to; body = letter.body; stamp = letter.stamp; timestamp = letter.timestamp; signed; deliveryTime }
       };
     }
   };
@@ -303,5 +331,134 @@ actor {
       case (null) { [] };
       case (?inbox) { inbox };
     }
+  };
+
+  // ---- FRIEND SYSTEM ----
+
+  public shared ({ caller }) func sendFriendRequest(toUsername : Text) : async FriendRequestResult {
+    let lower = toUsername.toLower();
+    switch (usernameIndex.get(lower)) {
+      case (null) { #error("User not found") };
+      case (?target) {
+        if (target == caller) return #error("Cannot add yourself");
+        // Check if already friends
+        let myFriends = switch (friendsList.get(caller)) {
+          case (null) { [] };
+          case (?f) { f };
+        };
+        for (f in myFriends.vals()) {
+          if (f == target) return #error("Already friends");
+        };
+        // Check if request already sent
+        let targetRequests = switch (friendRequests.get(target)) {
+          case (null) { [] };
+          case (?r) { r };
+        };
+        for (r in targetRequests.vals()) {
+          if (r == caller) return #error("Request already sent");
+        };
+        friendRequests.add(target, targetRequests.concat([caller]));
+        #ok
+      };
+    }
+  };
+
+  public shared ({ caller }) func acceptFriendRequest(fromPrincipal : Principal) : async Bool {
+    let myRequests = switch (friendRequests.get(caller)) {
+      case (null) { return false };
+      case (?r) { r };
+    };
+    var found = false;
+    var newRequests : [Principal] = [];
+    for (r in myRequests.vals()) {
+      if (r == fromPrincipal) { found := true; }
+      else { newRequests := newRequests.concat([r]); };
+    };
+    if (not found) return false;
+    friendRequests.add(caller, newRequests);
+    let myFriends = switch (friendsList.get(caller)) {
+      case (null) { [] };
+      case (?f) { f };
+    };
+    friendsList.add(caller, myFriends.concat([fromPrincipal]));
+    let theirFriends = switch (friendsList.get(fromPrincipal)) {
+      case (null) { [] };
+      case (?f) { f };
+    };
+    friendsList.add(fromPrincipal, theirFriends.concat([caller]));
+    true
+  };
+
+  public shared ({ caller }) func declineFriendRequest(fromPrincipal : Principal) : async Bool {
+    let myRequests = switch (friendRequests.get(caller)) {
+      case (null) { return false };
+      case (?r) { r };
+    };
+    var found = false;
+    var newRequests : [Principal] = [];
+    for (r in myRequests.vals()) {
+      if (r == fromPrincipal) { found := true; }
+      else { newRequests := newRequests.concat([r]); };
+    };
+    if (not found) return false;
+    friendRequests.add(caller, newRequests);
+    true
+  };
+
+  public shared ({ caller }) func removeFriend(friendPrincipal : Principal) : async Bool {
+    let myFriends = switch (friendsList.get(caller)) {
+      case (null) { return false };
+      case (?f) { f };
+    };
+    var found = false;
+    var newMyFriends : [Principal] = [];
+    for (f in myFriends.vals()) {
+      if (f == friendPrincipal) { found := true; }
+      else { newMyFriends := newMyFriends.concat([f]); };
+    };
+    if (not found) return false;
+    friendsList.add(caller, newMyFriends);
+    let theirFriends = switch (friendsList.get(friendPrincipal)) {
+      case (null) { [] };
+      case (?f) { f };
+    };
+    var newTheirFriends : [Principal] = [];
+    for (f in theirFriends.vals()) {
+      if (f != caller) { newTheirFriends := newTheirFriends.concat([f]); };
+    };
+    friendsList.add(friendPrincipal, newTheirFriends);
+    true
+  };
+
+  public query ({ caller }) func getFriends() : async [FriendEntry] {
+    let myFriends = switch (friendsList.get(caller)) {
+      case (null) { [] };
+      case (?f) { f };
+    };
+    var result : [FriendEntry] = [];
+    for (p in myFriends.vals()) {
+      let uname = switch (usernames.get(p)) {
+        case (null) { "unknown" };
+        case (?u) { u };
+      };
+      result := result.concat([{ username = uname; principal = p }]);
+    };
+    result
+  };
+
+  public query ({ caller }) func getPendingFriendRequests() : async [FriendEntry] {
+    let pending = switch (friendRequests.get(caller)) {
+      case (null) { [] };
+      case (?r) { r };
+    };
+    var result : [FriendEntry] = [];
+    for (p in pending.vals()) {
+      let uname = switch (usernames.get(p)) {
+        case (null) { "unknown" };
+        case (?u) { u };
+      };
+      result := result.concat([{ username = uname; principal = p }]);
+    };
+    result
   };
 };

@@ -1,30 +1,32 @@
 # POSTMAN - The Virtual Letter
 
 ## Current State
-Empty scaffold with Motoko backend and React/TypeScript frontend.
+- Backend: Motoko canister with user profiles, username system, letter sending/signing, inbox/outbox. No friend system methods exist in backend. No delivery timer stored in backend.
+- Frontend: Inbox shows all letters and allows opening immediately (no delivery gate). ProfilePage shows username card (no copy/share buttons) and change-username form (no friends list). DeliveryStore tracks delivery timing only in sender's localStorage.
 
 ## Requested Changes (Diff)
 
 ### Add
-- User authentication (login/register with principal identity)
-- Letter composition page: rich text editor with parchment/paper background, handwriting-style font options
-- Postage stamp selector: Indian and Pakistani vintage stamps as selectable UI components
-- Letter inbox and outbox views
-- Letter delivery status: Pending -> In Transit -> Delivered states with timestamps
-- Delivery tracking visual: animated map showing letter traveling from sender to recipient city
-- Signature page: users can draw or type their signature, stored per user
-- Postman bell notification: visual/audio notification when a new letter arrives
-- Recipient lookup: search for registered users by name to send letters
-- Letter sealing animation: wax seal effect when sending
+- Backend: `deliveryTime: Int` field on `Letter` and `LetterDetail` — set to `Time.now() + random(1-120) * 1_000_000_000` when letter is sent
+- Backend: Full friend system — send/accept/decline/remove friend requests, list friends and pending requests
+- Frontend: Delivery lock screen in Inbox — if current time < deliveryTime, show animated "postman is on the way" screen with countdown timer; letter content is fully locked until timer expires
+- Frontend: Friends list section in ProfilePage — shows accepted friends with username, remove button
+- Frontend: Copy button and Share button on username card in ProfilePage — Copy copies @username to clipboard; Share shares a link like `?addUser=username`
+- Frontend: On app load, detect `?addUser=username` URL param and navigate to a pre-filled friend search
 
 ### Modify
-- Nothing (new project)
+- Backend: `sendLetter` — also set `deliveryTime` on the new letter
+- Backend: `LetterDetail` — add `deliveryTime: Int` field
+- Frontend: Inbox `LetterOpener` — check `deliveryTime` vs current time before showing sign/reveal flow
+- Frontend: ProfilePage — add friends list section below change-username section
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Backend: User profiles (name, city, signature), Letters (sender, recipient, body, stamp, status, timestamps), CRUD operations for letters, user search
-2. Frontend: Auth flow, compose letter page with stamp picker, inbox/outbox list, letter detail view with vintage styling, tracking animation, bell notification on new arrivals
-3. Use authorization component for login
-4. Vintage parchment UI with warm browns, sepia tones, aged paper textures via CSS
+1. Regenerate backend with deliveryTime on letters and full friend system methods
+2. Update frontend bindings (backend.d.ts, declarations)
+3. Update Inbox.tsx to gate on deliveryTime
+4. Update ProfilePage.tsx to add friends list and copy/share on username
+5. Update useQueries.ts to add friend hooks
+6. Handle ?addUser= URL param in App.tsx or MainApp.tsx

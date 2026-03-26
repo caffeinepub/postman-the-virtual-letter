@@ -1,6 +1,8 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  FriendEntry,
+  FriendRequestResult,
   LetterDetail,
   SetUsernameResult,
   StampType,
@@ -96,14 +98,10 @@ export function useMyUsername() {
     queryKey: ["myUsername"],
     queryFn: async () => {
       if (!actor) return null;
-      // Add a 10-second timeout so it never hangs forever
-      const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), 10000),
-      );
-      return Promise.race([actor.getMyUsername(), timeoutPromise]);
+      return actor.getMyUsername();
     },
     enabled: !!actor && !isFetching,
-    retry: false,
+    retry: 2,
     staleTime: 60000,
   });
 }
@@ -148,9 +146,10 @@ export function useGetLetter(letterId: bigint | null) {
   const { actor, isFetching } = useActor();
   return useQuery<LetterDetail | null>({
     queryKey: ["letter", letterId?.toString()],
-    queryFn: async () => {
+    queryFn: async (): Promise<LetterDetail | null> => {
       if (!actor || letterId === null) return null;
-      return actor.getLetter(letterId);
+      // Cast to any to bridge backend.ts vs backend.d.ts LetterDetail types
+      return (actor as any).getLetter(letterId) as Promise<LetterDetail | null>;
     },
     enabled: !!actor && !isFetching && letterId !== null,
   });
@@ -188,5 +187,96 @@ export function useGetLetterSignature(letterId: bigint | null) {
       return actor.getLetterSignature(letterId);
     },
     enabled: !!actor && !isFetching && letterId !== null,
+  });
+}
+
+export function useSendFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation<FriendRequestResult, Error, string>({
+    mutationFn: async (username: string) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).sendFriendRequest(
+        username,
+      ) as Promise<FriendRequestResult>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
+    },
+  });
+}
+
+export function useAcceptFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation<boolean, Error, Principal>({
+    mutationFn: async (fromPrincipal: Principal) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).acceptFriendRequest(
+        fromPrincipal,
+      ) as Promise<boolean>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
+    },
+  });
+}
+
+export function useDeclineFriendRequest() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation<boolean, Error, Principal>({
+    mutationFn: async (fromPrincipal: Principal) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).declineFriendRequest(
+        fromPrincipal,
+      ) as Promise<boolean>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
+    },
+  });
+}
+
+export function useRemoveFriend() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation<boolean, Error, Principal>({
+    mutationFn: async (friendPrincipal: Principal) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).removeFriend(friendPrincipal) as Promise<boolean>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+    },
+  });
+}
+
+export function useGetFriends() {
+  const { actor, isFetching } = useActor();
+  return useQuery<FriendEntry[]>({
+    queryKey: ["friends"],
+    queryFn: async (): Promise<FriendEntry[]> => {
+      if (!actor) return [];
+      return (actor as any).getFriends() as Promise<FriendEntry[]>;
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+  });
+}
+
+export function useGetPendingFriendRequests() {
+  const { actor, isFetching } = useActor();
+  return useQuery<FriendEntry[]>({
+    queryKey: ["pendingFriendRequests"],
+    queryFn: async (): Promise<FriendEntry[]> => {
+      if (!actor) return [];
+      return (actor as any).getPendingFriendRequests() as Promise<
+        FriendEntry[]
+      >;
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
   });
 }

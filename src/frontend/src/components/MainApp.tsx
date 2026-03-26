@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Principal } from "@icp-sdk/core/principal";
 import { Bell, LogOut, Mail, PenLine, Send, User } from "lucide-react";
@@ -13,7 +23,6 @@ import ProfilePage from "./ProfilePage";
 function playPostalChime() {
   try {
     const ctx = new AudioContext();
-    // Three-note ascending chime: E4, G4, B4
     const notes = [329.63, 392.0, 493.88];
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
@@ -40,26 +49,34 @@ export default function MainApp() {
   const { data: profile } = useCallerProfile();
   const { data: inbox } = useInbox(principal);
   const [bellAnimating, setBellAnimating] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const inboxCount = inbox?.length ?? 0;
+
+  // Handle ?addUser= URL param
+  const [defaultAddFriend] = useState<string | undefined>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("addUser") ?? undefined;
+  });
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("addUser") ? "profile" : "home";
+  });
 
   const seenIdsRef = useRef<Set<string>>(new Set());
   const hasInitializedRef = useRef(false);
 
-  // Request notification permission on mount
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
 
-  // Detect new letters arriving in inbox
   useEffect(() => {
     if (!inbox) return;
 
     const currentIds = (inbox as bigint[]).map((id) => id.toString());
 
     if (!hasInitializedRef.current) {
-      // First load — seed the seen set without firing notifications
       for (const id of currentIds) {
         seenIdsRef.current.add(id);
       }
@@ -67,10 +84,8 @@ export default function MainApp() {
       return;
     }
 
-    // Check for new letters
     for (const id of currentIds) {
       if (!seenIdsRef.current.has(id)) {
-        // New letter detected — fire notification + chime
         if ("Notification" in window && Notification.permission === "granted") {
           new Notification("📬 Postman has a letter for you!", {
             body: "A new letter has arrived. Sign to receive it.",
@@ -78,11 +93,10 @@ export default function MainApp() {
           });
         }
         playPostalChime();
-        break; // Only fire once per batch of new letters
+        break;
       }
     }
 
-    // Update seen set
     for (const id of currentIds) {
       seenIdsRef.current.add(id);
     }
@@ -136,7 +150,7 @@ export default function MainApp() {
             )}
             <button
               type="button"
-              onClick={() => clear()}
+              onClick={() => setLogoutDialogOpen(true)}
               data-ocid="nav.logout_button"
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-lora rounded transition-opacity hover:opacity-80"
               style={{
@@ -152,7 +166,7 @@ export default function MainApp() {
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-6 max-w-4xl">
-        <Tabs defaultValue="home" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList
             className="w-full mb-6 p-1 h-auto rounded-none"
             style={{
@@ -226,7 +240,7 @@ export default function MainApp() {
             <Outbox principal={principal} />
           </TabsContent>
           <TabsContent value="profile">
-            <ProfilePage />
+            <ProfilePage defaultAddFriend={defaultAddFriend} />
           </TabsContent>
         </Tabs>
       </main>
@@ -249,6 +263,35 @@ export default function MainApp() {
           caffeine.ai
         </a>
       </footer>
+
+      <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <AlertDialogContent data-ocid="logout.dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-playfair">
+              Log out of POSTMAN?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-lora">
+              Your letters and account will be safe. You can log back in anytime
+              with Internet Identity.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-ocid="logout.cancel_button"
+              className="font-lora"
+            >
+              Stay
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="logout.confirm_button"
+              className="font-lora"
+              onClick={() => clear()}
+            >
+              Log Out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

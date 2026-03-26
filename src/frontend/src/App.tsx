@@ -88,7 +88,7 @@ function AppInner() {
   const { data: username, isLoading: usernameLoading } = useMyUsername();
 
   if (isInitializing) {
-    return <LoadingScreen message="Opening post office\u2026" />;
+    return <LoadingScreen message="Opening post office..." />;
   }
 
   if (!isAuthenticated) {
@@ -96,7 +96,7 @@ function AppInner() {
   }
 
   if (actorLoading) {
-    return <LoadingScreen message="Opening post office\u2026" />;
+    return <LoadingScreen message="Opening post office..." />;
   }
 
   if (actorError) {
@@ -108,7 +108,7 @@ function AppInner() {
   }
 
   if (usernameLoading) {
-    return <LoadingScreen message="Loading your account\u2026" />;
+    return <LoadingScreen message="Loading your account..." />;
   }
 
   // No username (or fetch returned null) → show setup screen

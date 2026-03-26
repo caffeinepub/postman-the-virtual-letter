@@ -28,6 +28,25 @@ export const StampType = IDL.Variant({
   'indian' : IDL.Null,
   'pakistani' : IDL.Null,
 });
+export const LetterDetail = IDL.Record({
+  'id' : IDL.Nat,
+  'from' : IDL.Principal,
+  'to' : IDL.Principal,
+  'body' : IDL.Text,
+  'stamp' : StampType,
+  'timestamp' : IDL.Int,
+  'signed' : IDL.Bool,
+});
+export const UserSearchResult = IDL.Record({
+  'name' : IDL.Text,
+  'city' : IDL.Text,
+  'username' : IDL.Text,
+  'principal' : IDL.Principal,
+});
+export const SetUsernameResult = IDL.Variant({
+  'ok' : IDL.Null,
+  'error' : IDL.Text,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -53,6 +72,13 @@ export const idlService = IDL.Service({
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'searchProfilesByName' : IDL.Func([IDL.Text], [IDL.Vec(Profile)], ['query']),
   'sendLetter' : IDL.Func([IDL.Principal, IDL.Text, StampType], [IDL.Nat], []),
+  'getLetter' : IDL.Func([IDL.Nat], [IDL.Opt(LetterDetail)], ['query']),
+  'signLetter' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
+  'getLetterSignature' : IDL.Func([IDL.Nat], [IDL.Opt(IDL.Text)], ['query']),
+  'setUsername' : IDL.Func([IDL.Text], [SetUsernameResult], []),
+  'getMyUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
+  'checkUsernameAvailable' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'findUserByUsername' : IDL.Func([IDL.Text], [IDL.Opt(UserSearchResult)], ['query']),
 });
 
 export const idlInitArgs = [];
@@ -78,7 +104,26 @@ export const idlFactory = ({ IDL }) => {
     'indian' : IDL.Null,
     'pakistani' : IDL.Null,
   });
-  
+  const LetterDetail = IDL.Record({
+    'id' : IDL.Nat,
+    'from' : IDL.Principal,
+    'to' : IDL.Principal,
+    'body' : IDL.Text,
+    'stamp' : StampType,
+    'timestamp' : IDL.Int,
+    'signed' : IDL.Bool,
+  });
+  const UserSearchResult = IDL.Record({
+    'name' : IDL.Text,
+    'city' : IDL.Text,
+    'username' : IDL.Text,
+    'principal' : IDL.Principal,
+  });
+  const SetUsernameResult = IDL.Variant({
+    'ok' : IDL.Null,
+    'error' : IDL.Text,
+  });
+
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -111,6 +156,13 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Nat],
         [],
       ),
+    'getLetter' : IDL.Func([IDL.Nat], [IDL.Opt(LetterDetail)], ['query']),
+    'signLetter' : IDL.Func([IDL.Nat, IDL.Text], [IDL.Bool], []),
+    'getLetterSignature' : IDL.Func([IDL.Nat], [IDL.Opt(IDL.Text)], ['query']),
+    'setUsername' : IDL.Func([IDL.Text], [SetUsernameResult], []),
+    'getMyUsername' : IDL.Func([], [IDL.Opt(IDL.Text)], ['query']),
+    'checkUsernameAvailable' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'findUserByUsername' : IDL.Func([IDL.Text], [IDL.Opt(UserSearchResult)], ['query']),
   });
 };
 

@@ -100,6 +100,22 @@ export interface UserProfile {
     city: string;
     name: string;
 }
+export interface LetterDetail {
+    id: bigint;
+    from: Principal;
+    to: Principal;
+    body: string;
+    stamp: StampType;
+    timestamp: bigint;
+    signed: boolean;
+}
+export interface UserSearchResult {
+    name: string;
+    city: string;
+    username: string;
+    principal: Principal;
+}
+export type SetUsernameResult = { __kind__: "ok" } | { __kind__: "error"; value: string };
 export enum StampType {
     indian = "indian",
     pakistani = "pakistani"
@@ -112,11 +128,16 @@ export enum UserRole {
 export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    checkUsernameAvailable(username: string): Promise<boolean>;
+    findUserByUsername(username: string): Promise<UserSearchResult | null>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
     getInbox(arg0: {
         userId: Principal;
     }): Promise<Array<LetterId>>;
+    getLetter(letterId: bigint): Promise<LetterDetail | null>;
+    getLetterSignature(letterId: bigint): Promise<string | null>;
+    getMyUsername(): Promise<string | null>;
     getOutbox(arg0: {
         userId: Principal;
     }): Promise<Array<LetterId>>;
@@ -125,8 +146,10 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     searchProfilesByName(searchText: string): Promise<Array<Profile>>;
     sendLetter(to: Principal, body: string, stamp: StampType): Promise<bigint>;
+    setUsername(username: string): Promise<SetUsernameResult>;
+    signLetter(letterId: bigint, signatureData: string): Promise<boolean>;
 }
-import type { StampType as _StampType, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { StampType as _StampType, UserProfile as _UserProfile, UserRole as _UserRole, LetterDetail as _LetterDetail, UserSearchResult as _UserSearchResult, SetUsernameResult as _SetUsernameResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -157,6 +180,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async checkUsernameAvailable(arg0: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.checkUsernameAvailable(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.checkUsernameAvailable(arg0);
+            return result;
+        }
+    }
+    async findUserByUsername(arg0: string): Promise<UserSearchResult | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findUserByUsername(arg0);
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findUserByUsername(arg0);
+            return result.length === 0 ? null : result[0];
+        }
+    }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
@@ -185,9 +236,7 @@ export class Backend implements backendInterface {
             return from_candid_UserRole_n4(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getInbox(arg0: {
-        userId: Principal;
-    }): Promise<Array<LetterId>> {
+    async getInbox(arg0: { userId: Principal }): Promise<Array<LetterId>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getInbox(arg0);
@@ -201,9 +250,49 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getOutbox(arg0: {
-        userId: Principal;
-    }): Promise<Array<LetterId>> {
+    async getLetter(arg0: bigint): Promise<LetterDetail | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getLetter(arg0);
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getLetter(arg0);
+            return result.length === 0 ? null : result[0];
+        }
+    }
+    async getLetterSignature(arg0: bigint): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getLetterSignature(arg0);
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getLetterSignature(arg0);
+            return result.length === 0 ? null : result[0];
+        }
+    }
+    async getMyUsername(): Promise<string | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getMyUsername();
+                return result.length === 0 ? null : result[0];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getMyUsername();
+            return result.length === 0 ? null : result[0];
+        }
+    }
+    async getOutbox(arg0: { userId: Principal }): Promise<Array<LetterId>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getOutbox(arg0);
@@ -287,6 +376,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setUsername(arg0: string): Promise<SetUsernameResult> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setUsername(arg0);
+                return from_candid_SetUsernameResult(result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setUsername(arg0);
+            return from_candid_SetUsernameResult(result);
+        }
+    }
+    async signLetter(arg0: bigint, arg1: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.signLetter(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.signLetter(arg0, arg1);
+            return result;
+        }
+    }
 }
 function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n5(_uploadFile, _downloadFile, value);
@@ -302,6 +419,11 @@ function from_candid_variant_n5(_uploadFile: (file: ExternalBlob) => Promise<Uin
     guest: null;
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function from_candid_SetUsernameResult(value: _SetUsernameResult): SetUsernameResult {
+    if ("ok" in value) return { __kind__: "ok" };
+    if ("error" in value) return { __kind__: "error", value: value.error };
+    return { __kind__: "ok" };
 }
 function to_candid_StampType_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: StampType): _StampType {
     return to_candid_variant_n7(_uploadFile, _downloadFile, value);

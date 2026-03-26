@@ -1,28 +1,120 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { Principal } from "@icp-sdk/core/principal";
-import { Bell } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { useInbox } from "../hooks/useQueries";
+import type { LetterDetail } from "../backend.d";
+import { useGetLetter, useInbox, useSignLetter } from "../hooks/useQueries";
+import EnvelopeReveal from "./EnvelopeReveal";
+import SignatureCapture from "./SignatureCapture";
 
 interface Props {
   principal: Principal | undefined;
 }
 
-const nostalgiaPhrases = [
-  "A letter of great importance has arrived from afar.",
-  "Words carried by the wind, now resting in your hands.",
-  "The postman rang twice — this letter awaited your eyes alone.",
-  "Penned with care, sealed with hope, delivered with love.",
-  "Across mountains and rivers this missive has traveled to reach you.",
-  "The ink is barely dry, yet the heart behind it beats eternally.",
-];
+type FlowState = "idle" | "loading" | "signing" | "revealing";
+
+function LetterOpener({
+  letterId,
+  onClose,
+}: {
+  letterId: bigint;
+  onClose: () => void;
+}) {
+  const { data: letterDetail, isLoading } = useGetLetter(letterId);
+  const signLetter = useSignLetter();
+  const [flow, setFlow] = useState<FlowState>("loading");
+  const [resolvedLetter, setResolvedLetter] = useState<LetterDetail | null>(
+    null,
+  );
+
+  // Once letter loads, decide initial flow state
+  if (isLoading || flow === "loading") {
+    if (!isLoading && letterDetail !== undefined && flow === "loading") {
+      // Transition out of loading
+      if (letterDetail === null) {
+        // Letter not found
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            style={{ background: "rgba(15, 8, 3, 0.88)" }}
+          >
+            <div className="text-center">
+              <p
+                className="font-playfair text-xl"
+                style={{ color: "oklch(0.92 0.04 85)" }}
+              >
+                Letter not found.
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-4 px-6 py-2 font-lora text-sm rounded-sm"
+                style={{
+                  background: "oklch(0.42 0.10 48)",
+                  color: "oklch(0.97 0.02 80)",
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      }
+      // Set flow based on signed state
+      if (letterDetail.signed) {
+        setResolvedLetter(letterDetail);
+        setFlow("revealing");
+      } else {
+        setResolvedLetter(letterDetail);
+        setFlow("signing");
+      }
+    }
+
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center"
+        style={{ background: "rgba(15, 8, 3, 0.88)" }}
+        data-ocid="inbox.loading_state"
+      >
+        <div className="flex flex-col items-center gap-4">
+          <Loader2
+            className="w-8 h-8 animate-spin"
+            style={{ color: "oklch(0.88 0.04 82)" }}
+          />
+          <p
+            className="font-lora italic"
+            style={{ color: "oklch(0.88 0.04 82)" }}
+          >
+            Retrieving your letter…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (flow === "signing") {
+    return (
+      <SignatureCapture
+        onSign={async (signatureDataUrl) => {
+          const ok = await signLetter.mutateAsync({
+            letterId,
+            signatureData: signatureDataUrl,
+          });
+          if (ok && resolvedLetter) {
+            setFlow("revealing");
+          }
+        }}
+        onCancel={onClose}
+      />
+    );
+  }
+
+  if (flow === "revealing" && resolvedLetter) {
+    return <EnvelopeReveal letter={resolvedLetter} onClose={onClose} />;
+  }
+
+  return null;
+}
 
 export default function Inbox({ principal }: Props) {
   const { data: inbox, isLoading } = useInbox(principal);
@@ -46,165 +138,110 @@ export default function Inbox({ principal }: Props) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-      data-ocid="inbox.section"
-    >
-      <div className="flex items-center justify-between">
-        <h2
-          className="font-playfair text-3xl font-bold"
-          style={{ color: "oklch(0.25 0.07 50)" }}
-        >
-          Your Inbox
-        </h2>
-        <div className="flex items-center gap-2">
-          <Bell
-            className={`w-6 h-6 ${letters.length > 0 ? "animate-bell" : ""}`}
-            style={{ color: "oklch(0.42 0.10 48)" }}
-          />
-          <span
-            className="font-lora text-sm"
-            style={{ color: "oklch(0.42 0.10 48)" }}
-          >
-            {letters.length} letter{letters.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-      </div>
-
-      {letters.length === 0 ? (
-        <div
-          className="text-center py-16 vintage-border"
-          style={{ background: "oklch(0.95 0.035 82)" }}
-          data-ocid="inbox.empty_state"
-        >
-          <div className="text-6xl mb-4">&#128237;</div>
-          <p
-            className="font-playfair text-xl"
-            style={{ color: "oklch(0.38 0.08 52)" }}
-          >
-            No letters yet
-          </p>
-          <p
-            className="font-lora italic text-sm mt-2"
-            style={{ color: "oklch(0.52 0.07 56)" }}
-          >
-            The postman has not visited today.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {letters.map((letterId, i) => (
-            <motion.button
-              key={String(letterId)}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.07 }}
-              onClick={() => setSelectedLetter(letterId)}
-              data-ocid={`inbox.item.${i + 1}`}
-              className="w-full text-left envelope-card p-4 pr-6 flex items-center gap-4 hover:brightness-95 transition-all"
-            >
-              <div className="text-4xl flex-shrink-0">&#9993;</div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="font-playfair font-semibold text-base"
-                  style={{ color: "oklch(0.28 0.07 52)" }}
-                >
-                  Letter #{String(letterId).padStart(4, "0")}
-                </p>
-                <p
-                  className="font-lora italic text-xs mt-0.5 truncate"
-                  style={{ color: "oklch(0.50 0.07 55)" }}
-                >
-                  {nostalgiaPhrases[Number(letterId) % nostalgiaPhrases.length]}
-                </p>
-              </div>
-              <div
-                className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex flex-col items-center justify-center opacity-60"
-                style={{ borderColor: "oklch(0.42 0.10 48)" }}
-              >
-                <span
-                  className="text-xs font-playfair"
-                  style={{ color: "oklch(0.42 0.10 48)" }}
-                >
-                  POST
-                </span>
-                <span
-                  className="text-xs font-playfair"
-                  style={{ color: "oklch(0.42 0.10 48)" }}
-                >
-                  2026
-                </span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
-      )}
-
-      <Dialog
-        open={selectedLetter !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedLetter(null);
-        }}
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+        data-ocid="inbox.section"
       >
-        <DialogContent
-          className="max-w-md rounded-none vintage-border font-lora"
-          style={{
-            background:
-              "linear-gradient(135deg, oklch(0.96 0.04 85), oklch(0.91 0.05 78))",
-          }}
-          data-ocid="inbox.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle
-              className="font-playfair text-2xl"
-              style={{ color: "oklch(0.25 0.07 50)" }}
-            >
-              Letter #
-              {selectedLetter !== null
-                ? String(selectedLetter).padStart(4, "0")
-                : ""}
-            </DialogTitle>
-            <DialogDescription
-              className="font-lora italic"
+        <div className="flex items-center justify-between">
+          <h2
+            className="font-playfair text-3xl font-bold"
+            style={{ color: "oklch(0.25 0.07 50)" }}
+          >
+            Your Inbox
+          </h2>
+          <div className="flex items-center gap-2">
+            <Bell
+              className={`w-6 h-6 ${letters.length > 0 ? "animate-bell" : ""}`}
+              style={{ color: "oklch(0.42 0.10 48)" }}
+            />
+            <span
+              className="font-lora text-sm"
               style={{ color: "oklch(0.42 0.10 48)" }}
             >
-              A letter received
-            </DialogDescription>
-          </DialogHeader>
-          <div className="parchment-paper p-6 mt-2">
+              {letters.length} letter{letters.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+
+        {letters.length === 0 ? (
+          <div
+            className="text-center py-16 vintage-border"
+            style={{ background: "oklch(0.95 0.035 82)" }}
+            data-ocid="inbox.empty_state"
+          >
+            <div className="text-6xl mb-4">&#128237;</div>
             <p
-              className="font-dancing text-xl leading-relaxed"
-              style={{ color: "oklch(0.22 0.06 50)" }}
+              className="font-playfair text-xl"
+              style={{ color: "oklch(0.38 0.08 52)" }}
             >
-              {selectedLetter !== null
-                ? nostalgiaPhrases[
-                    Number(selectedLetter) % nostalgiaPhrases.length
-                  ]
-                : ""}
+              No letters yet
             </p>
             <p
-              className="font-lora italic text-xs mt-6 text-right"
-              style={{ color: "oklch(0.50 0.07 55)" }}
+              className="font-lora italic text-sm mt-2"
+              style={{ color: "oklch(0.52 0.07 56)" }}
             >
-              &mdash; Delivered with care by POSTMAN
+              The postman has not visited today.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setSelectedLetter(null)}
-            data-ocid="inbox.close_button"
-            className="w-full py-2 mt-2 font-lora text-sm transition-opacity hover:opacity-80"
-            style={{
-              background: "oklch(0.42 0.10 48)",
-              color: "oklch(0.97 0.02 80)",
-            }}
-          >
-            Close Letter
-          </button>
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+        ) : (
+          <div className="space-y-3">
+            {letters.map((letterId, i) => (
+              <motion.button
+                key={String(letterId)}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.07 }}
+                onClick={() => setSelectedLetter(letterId)}
+                data-ocid={`inbox.item.${i + 1}`}
+                className="w-full text-left envelope-card p-4 pr-6 flex items-center gap-4 hover:brightness-95 transition-all"
+              >
+                <div className="text-4xl flex-shrink-0">&#9993;</div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className="font-playfair font-semibold text-base"
+                    style={{ color: "oklch(0.28 0.07 52)" }}
+                  >
+                    Letter #{String(letterId).padStart(4, "0")}
+                  </p>
+                  <p
+                    className="font-lora italic text-xs mt-0.5 truncate"
+                    style={{ color: "oklch(0.50 0.07 55)" }}
+                  >
+                    Tap to open — signature required
+                  </p>
+                </div>
+                <div
+                  className="flex-shrink-0 w-14 h-14 rounded-full border-2 flex flex-col items-center justify-center opacity-60"
+                  style={{ borderColor: "oklch(0.42 0.10 48)" }}
+                >
+                  <span
+                    className="text-xs font-playfair"
+                    style={{ color: "oklch(0.42 0.10 48)" }}
+                  >
+                    POST
+                  </span>
+                  <span
+                    className="text-xs font-playfair"
+                    style={{ color: "oklch(0.42 0.10 48)" }}
+                  >
+                    2026
+                  </span>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {selectedLetter !== null && (
+        <LetterOpener
+          letterId={selectedLetter}
+          onClose={() => setSelectedLetter(null)}
+        />
+      )}
+    </>
   );
 }

@@ -56,14 +56,18 @@ export default function LandingPage() {
           className="mb-8"
         >
           <div
-            className="inline-flex items-center justify-center w-28 h-28 rounded-full mx-auto"
+            className="inline-flex items-center justify-center w-40 h-40 rounded-2xl mx-auto overflow-hidden"
             style={{
               background:
                 "radial-gradient(circle at 35% 35%, oklch(0.50 0.10 50), oklch(0.30 0.08 48))",
               boxShadow: "0 8px 32px oklch(0.30 0.08 48 / 0.4)",
             }}
           >
-            <span className="text-5xl">&#9993;</span>
+            <img
+              src="/assets/uploads/1774446462824-019d2747-ebb7-7688-8af6-5c7a0b08f63d-1.png"
+              alt="POSTMAN logo"
+              className="w-full h-full object-cover"
+            />
           </div>
         </motion.div>
 

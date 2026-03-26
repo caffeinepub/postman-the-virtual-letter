@@ -1,61 +1,423 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Search } from "lucide-react";
+import type { Principal } from "@icp-sdk/core/principal";
+import {
+  AtSign,
+  Loader2,
+  Mic,
+  MicOff,
+  Play,
+  RotateCcw,
+  Search,
+  Square,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { StampType } from "../backend.d";
-import { useSearchProfiles, useSendLetter } from "../hooks/useQueries";
+import {
+  useCallerProfile,
+  useFindUserByUsername,
+  useSearchProfiles,
+  useSendLetter,
+} from "../hooks/useQueries";
+import { saveDelivery } from "../lib/deliveryStore";
 import { createPrincipal } from "../lib/principalUtils";
 
+const MAX_DURATION = 120; // seconds
+
+function formatTime(secs: number) {
+  const m = Math.floor(secs / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = (secs % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function VoiceRecorder({
+  onRecorded,
+}: {
+  onRecorded: (blob: Blob) => void;
+}) {
+  const [recState, setRecState] = useState<"idle" | "recording" | "recorded">(
+    "idle",
+  );
+  const [elapsed, setElapsed] = useState(0);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cleanup object URLs
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+    };
+  }, [audioUrl]);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "";
+      const mr = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        onRecorded(blob);
+        setRecState("recorded");
+        for (const track of stream.getTracks()) track.stop();
+      };
+      mr.start(200);
+      mediaRecorderRef.current = mr;
+      setElapsed(0);
+      setRecState("recording");
+
+      timerRef.current = setInterval(() => {
+        setElapsed((prev) => {
+          if (prev + 1 >= MAX_DURATION) {
+            stopRecording();
+            return MAX_DURATION;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch {
+      toast.error("Microphone access denied. Please allow microphone access.");
+    }
+  }
+
+  function stopRecording() {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+  }
+
+  function reRecord() {
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl(null);
+    setElapsed(0);
+    setRecState("idle");
+  }
+
+  const progress = (elapsed / MAX_DURATION) * 100;
+
+  return (
+    <div className="flex flex-col items-center gap-6 py-8">
+      {recState === "idle" && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <p
+            className="font-lora italic text-sm"
+            style={{ color: "oklch(0.52 0.07 56)" }}
+          >
+            Tap the microphone to begin recording your voice note
+          </p>
+          <motion.button
+            type="button"
+            onClick={startRecording}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            data-ocid="compose.voice_record_button"
+            className="w-24 h-24 rounded-full flex items-center justify-center shadow-lg transition-all"
+            style={{
+              background:
+                "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
+              border: "3px solid oklch(0.55 0.09 52)",
+              boxShadow: "0 4px 20px oklch(0.32 0.08 52 / 0.35)",
+            }}
+          >
+            <Mic
+              className="w-10 h-10"
+              style={{ color: "oklch(0.97 0.02 80)" }}
+            />
+          </motion.button>
+          <p
+            className="font-lora text-xs"
+            style={{ color: "oklch(0.60 0.06 58)" }}
+          >
+            Max duration: 2:00
+          </p>
+        </motion.div>
+      )}
+
+      {recState === "recording" && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center gap-4 w-full"
+        >
+          {/* Pulsing mic */}
+          <div className="relative">
+            <motion.div
+              animate={{ scale: [1, 1.35, 1], opacity: [0.6, 0, 0.6] }}
+              transition={{ repeat: Number.POSITIVE_INFINITY, duration: 1.5 }}
+              className="absolute inset-0 rounded-full"
+              style={{ background: "oklch(0.50 0.18 22 / 0.4)" }}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.18, 1], opacity: [0.8, 0.2, 0.8] }}
+              transition={{
+                repeat: Number.POSITIVE_INFINITY,
+                duration: 1.5,
+                delay: 0.25,
+              }}
+              className="absolute inset-0 rounded-full"
+              style={{ background: "oklch(0.50 0.18 22 / 0.3)" }}
+            />
+            <div
+              className="relative w-20 h-20 rounded-full flex items-center justify-center"
+              style={{
+                background:
+                  "linear-gradient(135deg, oklch(0.45 0.18 22), oklch(0.32 0.14 20))",
+                border: "3px solid oklch(0.55 0.14 22)",
+              }}
+            >
+              <Mic
+                className="w-8 h-8"
+                style={{ color: "oklch(0.97 0.02 80)" }}
+              />
+            </div>
+          </div>
+
+          {/* Timer */}
+          <div
+            className="font-playfair text-3xl font-bold"
+            style={{ color: "oklch(0.32 0.08 52)" }}
+          >
+            {formatTime(elapsed)}
+          </div>
+
+          {/* Progress bar */}
+          <div
+            className="w-full max-w-xs h-2 rounded-full overflow-hidden"
+            style={{ background: "oklch(0.88 0.04 78)" }}
+          >
+            <motion.div
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.5 }}
+              className="h-full rounded-full"
+              style={{
+                background:
+                  "linear-gradient(90deg, oklch(0.45 0.18 22), oklch(0.36 0.14 22))",
+              }}
+            />
+          </div>
+
+          <p
+            className="font-lora text-xs italic"
+            style={{ color: "oklch(0.50 0.18 22)" }}
+          >
+            Recording… speak clearly
+          </p>
+
+          <motion.button
+            type="button"
+            onClick={stopRecording}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            data-ocid="compose.voice_stop_button"
+            className="flex items-center gap-2 px-6 py-2.5 font-lora text-sm transition-all"
+            style={{
+              background: "oklch(0.45 0.18 22)",
+              color: "oklch(0.97 0.02 80)",
+              border: "2px solid oklch(0.55 0.14 22)",
+            }}
+          >
+            <Square className="w-4 h-4" />
+            Stop Recording
+          </motion.button>
+        </motion.div>
+      )}
+
+      {recState === "recorded" && audioUrl && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center gap-4 w-full"
+        >
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{
+              background:
+                "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
+              border: "3px solid oklch(0.55 0.09 52)",
+            }}
+          >
+            <Play
+              className="w-7 h-7"
+              style={{ color: "oklch(0.97 0.02 80)" }}
+            />
+          </div>
+
+          <p
+            className="font-playfair text-sm font-semibold"
+            style={{ color: "oklch(0.32 0.08 52)" }}
+          >
+            Voice note recorded — {formatTime(elapsed)}
+          </p>
+
+          {/* Native audio player for preview - a11y: user interaction provides the accessible interface */}
+          {/* biome-ignore lint/a11y/useMediaCaption: voice note preview; no transcript available at record time */}
+          <audio
+            controls
+            src={audioUrl}
+            className="w-full max-w-xs"
+            data-ocid="compose.voice_preview"
+          />
+
+          <button
+            type="button"
+            onClick={reRecord}
+            data-ocid="compose.voice_rerecord_button"
+            className="flex items-center gap-2 px-4 py-2 font-lora text-sm transition-all hover:brightness-110"
+            style={{
+              background: "oklch(0.88 0.04 78)",
+              color: "oklch(0.32 0.08 52)",
+              border: "1px solid oklch(0.65 0.08 58)",
+            }}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Re-record
+          </button>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 export default function ComposeLetter() {
+  const [composeMode, setComposeMode] = useState<"letter" | "voice">("letter");
   const [recipientSearch, setRecipientSearch] = useState("");
+  const [usernameSearch, setUsernameSearch] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState<{
     name: string;
+    city?: string;
     principalText?: string;
+    principal?: Principal;
   } | null>(null);
   const [letterBody, setLetterBody] = useState("");
+  const [voiceBlob, setVoiceBlob] = useState<Blob | null>(null);
   const [selectedStamp, setSelectedStamp] = useState<StampType>(
     StampType.indian,
   );
   const [showDropdown, setShowDropdown] = useState(false);
   const [envelopeFlying, setEnvelopeFlying] = useState(false);
 
+  const { data: callerProfile } = useCallerProfile();
   const { data: searchResults } = useSearchProfiles(recipientSearch);
+  const findByUsername = useFindUserByUsername();
   const sendLetter = useSendLetter();
+
+  const handleFindByUsername = async () => {
+    if (!usernameSearch.trim()) {
+      toast.error("Please enter a username.");
+      return;
+    }
+    try {
+      const result = await findByUsername.mutateAsync(usernameSearch.trim());
+      if (result) {
+        setSelectedRecipient({
+          name: result.name,
+          city: result.city,
+          principal: result.principal,
+        });
+      } else {
+        toast.error("No user found with that username.");
+      }
+    } catch {
+      toast.error("Failed to search. Please try again.");
+    }
+  };
 
   const handleSend = async () => {
     if (!selectedRecipient) {
       toast.error("Please select a recipient.");
       return;
     }
-    if (!letterBody.trim()) {
-      toast.error("Please write your letter.");
-      return;
+
+    let body: string;
+
+    if (composeMode === "voice") {
+      if (!voiceBlob) {
+        toast.error("Please record a voice note before sending.");
+        return;
+      }
+      // Convert blob to base64 dataURL
+      body = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(voiceBlob);
+      });
+      body = `VOICE_NOTE:${body}`;
+    } else {
+      if (!letterBody.trim()) {
+        toast.error("Please write your letter.");
+        return;
+      }
+      body = letterBody;
     }
-    if (!selectedRecipient.principalText) {
-      toast.error("Could not resolve recipient.");
+
+    let toPrincipal: Principal;
+    if (selectedRecipient.principal) {
+      toPrincipal = selectedRecipient.principal;
+    } else if (selectedRecipient.principalText) {
+      toPrincipal = createPrincipal(selectedRecipient.principalText);
+    } else {
+      toast.error("Could not resolve recipient address.");
       return;
     }
 
     try {
-      const toPrincipal = createPrincipal(selectedRecipient.principalText);
-      await sendLetter.mutateAsync({
+      const letterId = await sendLetter.mutateAsync({
         to: toPrincipal,
-        body: letterBody,
+        body,
         stamp: selectedStamp,
       });
+
+      saveDelivery({
+        letterId: String(letterId),
+        senderCity: callerProfile?.city ?? "Unknown",
+        recipientCity: selectedRecipient.city ?? "Unknown",
+        startTime: Date.now(),
+        durationMs: (Math.floor(Math.random() * 120) + 1) * 1000,
+      });
+
       setEnvelopeFlying(true);
-      toast.success("Your letter has been sealed and dispatched! &#128236;");
+      toast.success(
+        composeMode === "voice"
+          ? "Your voice note has been sealed and dispatched! 🎙️📬"
+          : "Your letter has been sealed and dispatched! 📬",
+      );
       setTimeout(() => {
         setEnvelopeFlying(false);
         setLetterBody("");
+        setVoiceBlob(null);
         setSelectedRecipient(null);
         setRecipientSearch("");
+        setUsernameSearch("");
+        setComposeMode("letter");
       }, 1000);
     } catch {
-      toast.error("Failed to send letter. Please try again.");
+      toast.error("Failed to send. Please try again.");
     }
   };
 
@@ -83,7 +445,7 @@ export default function ComposeLetter() {
 
       <div className="p-8 parchment-paper vintage-border relative">
         {/* Recipient */}
-        <div className="mb-6 relative">
+        <div className="mb-6">
           <Label
             className="font-playfair text-sm font-semibold block mb-2"
             style={{ color: "oklch(0.32 0.08 52)" }}
@@ -98,107 +460,305 @@ export default function ComposeLetter() {
                 border: "1px solid oklch(0.65 0.08 58)",
               }}
             >
-              <span
-                className="font-lora"
-                style={{ color: "oklch(0.28 0.07 52)" }}
-              >
-                {selectedRecipient.name}
-              </span>
+              <div>
+                <span
+                  className="font-lora font-semibold"
+                  style={{ color: "oklch(0.28 0.07 52)" }}
+                >
+                  {selectedRecipient.name}
+                </span>
+                {selectedRecipient.city && (
+                  <span
+                    className="ml-2 font-lora text-xs"
+                    style={{ color: "oklch(0.52 0.07 56)" }}
+                  >
+                    — {selectedRecipient.city}
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setSelectedRecipient(null);
                   setRecipientSearch("");
+                  setUsernameSearch("");
+                  findByUsername.reset();
                 }}
                 className="text-xs font-lora"
                 style={{ color: "oklch(0.36 0.14 22)" }}
               >
-                &#10005; Change
+                ✕ Change
               </button>
             </div>
           ) : (
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                style={{ color: "oklch(0.52 0.07 56)" }}
-              />
-              <Input
-                value={recipientSearch}
-                onChange={(e) => {
-                  setRecipientSearch(e.target.value);
-                  setShowDropdown(true);
-                }}
-                onFocus={() => setShowDropdown(true)}
-                placeholder="Search recipient by name…"
-                className="pl-9 rounded-none font-lora bg-transparent"
+            <Tabs defaultValue="name" data-ocid="compose.recipient_tab">
+              <TabsList
+                className="w-full rounded-none mb-3"
                 style={{
-                  borderColor: "oklch(0.65 0.08 58)",
-                  color: "oklch(0.28 0.07 52)",
+                  background: "oklch(0.88 0.04 78)",
+                  border: "1px solid oklch(0.65 0.08 58)",
                 }}
-                data-ocid="compose.search_input"
-              />
-              <AnimatePresence>
-                {showDropdown && searchResults && searchResults.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="absolute z-50 top-full left-0 right-0 border shadow-parchment"
-                    style={{
-                      background: "oklch(0.96 0.035 82)",
-                      borderColor: "oklch(0.65 0.08 58)",
+              >
+                <TabsTrigger
+                  value="name"
+                  className="flex-1 rounded-none font-lora text-sm data-[state=active]:bg-transparent"
+                  style={{ color: "oklch(0.32 0.08 52)" }}
+                  data-ocid="compose.search_by_name_tab"
+                >
+                  <Search className="w-3.5 h-3.5 mr-1.5" />
+                  Search by Name
+                </TabsTrigger>
+                <TabsTrigger
+                  value="username"
+                  className="flex-1 rounded-none font-lora text-sm data-[state=active]:bg-transparent"
+                  style={{ color: "oklch(0.32 0.08 52)" }}
+                  data-ocid="compose.find_by_username_tab"
+                >
+                  <AtSign className="w-3.5 h-3.5 mr-1.5" />
+                  Find by Username
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Search by Name */}
+              <TabsContent value="name" className="mt-0">
+                <div className="relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                    style={{ color: "oklch(0.52 0.07 56)" }}
+                  />
+                  <Input
+                    value={recipientSearch}
+                    onChange={(e) => {
+                      setRecipientSearch(e.target.value);
+                      setShowDropdown(true);
                     }}
-                    data-ocid="compose.dropdown_menu"
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder="Search recipient by name…"
+                    className="pl-9 rounded-none font-lora bg-transparent"
+                    style={{
+                      borderColor: "oklch(0.65 0.08 58)",
+                      color: "oklch(0.28 0.07 52)",
+                    }}
+                    data-ocid="compose.search_input"
+                  />
+                  <AnimatePresence>
+                    {showDropdown &&
+                      searchResults &&
+                      searchResults.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          className="absolute z-50 top-full left-0 right-0 border shadow-parchment"
+                          style={{
+                            background: "oklch(0.96 0.035 82)",
+                            borderColor: "oklch(0.65 0.08 58)",
+                          }}
+                          data-ocid="compose.dropdown_menu"
+                        >
+                          {searchResults.map((p) => (
+                            <button
+                              type="button"
+                              key={p.name}
+                              onClick={() => {
+                                setSelectedRecipient({
+                                  name: p.name,
+                                  city: p.city,
+                                });
+                                setShowDropdown(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 font-lora text-sm hover:bg-secondary transition-colors"
+                              style={{ color: "oklch(0.28 0.07 52)" }}
+                            >
+                              <span className="font-semibold">{p.name}</span>
+                              {p.city && (
+                                <span
+                                  className="ml-2 text-xs"
+                                  style={{ color: "oklch(0.52 0.07 56)" }}
+                                >
+                                  &mdash; {p.city}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                  </AnimatePresence>
+                </div>
+              </TabsContent>
+
+              {/* Find by Username */}
+              <TabsContent value="username" className="mt-0">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <AtSign
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+                      style={{ color: "oklch(0.52 0.07 56)" }}
+                    />
+                    <Input
+                      value={usernameSearch}
+                      onChange={(e) => setUsernameSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleFindByUsername();
+                      }}
+                      placeholder="e.g. ranjit_42"
+                      className="pl-9 rounded-none font-lora bg-transparent"
+                      style={{
+                        borderColor: "oklch(0.65 0.08 58)",
+                        color: "oklch(0.28 0.07 52)",
+                      }}
+                      data-ocid="compose.username_input"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleFindByUsername}
+                    disabled={
+                      findByUsername.isPending || !usernameSearch.trim()
+                    }
+                    data-ocid="compose.find_username_button"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 font-lora text-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
+                      color: "oklch(0.97 0.02 80)",
+                      border: "1px solid oklch(0.55 0.09 52)",
+                    }}
                   >
-                    {searchResults.map((p) => (
-                      <button
-                        type="button"
-                        key={p.name}
-                        onClick={() => {
-                          setSelectedRecipient({ name: p.name });
-                          setShowDropdown(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 font-lora text-sm hover:bg-secondary transition-colors"
-                        style={{ color: "oklch(0.28 0.07 52)" }}
-                      >
-                        <span className="font-semibold">{p.name}</span>
-                        {p.city && (
-                          <span
-                            className="ml-2 text-xs"
-                            style={{ color: "oklch(0.52 0.07 56)" }}
-                          >
-                            &mdash; {p.city}
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </motion.div>
+                    {findByUsername.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      "Find"
+                    )}
+                  </button>
+                </div>
+                {findByUsername.isSuccess && !findByUsername.data && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="mt-2 text-xs font-lora"
+                    style={{ color: "oklch(0.40 0.15 22)" }}
+                    data-ocid="compose.username_not_found_error_state"
+                  >
+                    No user found with that username.
+                  </motion.p>
                 )}
-              </AnimatePresence>
-            </div>
+                <p
+                  className="mt-2 text-xs font-lora italic"
+                  style={{ color: "oklch(0.55 0.07 58)" }}
+                >
+                  Ask your friend for their username from their Profile page.
+                </p>
+              </TabsContent>
+            </Tabs>
           )}
         </div>
 
-        {/* Letter body */}
-        <div className="mb-4">
-          <Label
-            className="font-playfair text-sm font-semibold block mb-2"
-            style={{ color: "oklch(0.32 0.08 52)" }}
+        {/* Mode toggle */}
+        <div className="mb-5">
+          <div
+            className="inline-flex rounded-sm overflow-hidden"
+            style={{ border: "1px solid oklch(0.65 0.08 58)" }}
+            data-ocid="compose.mode_toggle"
           >
-            Your Letter:
-          </Label>
-          <Textarea
-            value={letterBody}
-            onChange={(e) => setLetterBody(e.target.value)}
-            placeholder="Dear friend,…"
-            className="parchment-paper rounded-none font-lora resize-none border-0 focus-visible:ring-1 min-h-[220px] text-base leading-7"
-            style={{
-              color: "oklch(0.22 0.06 50)",
-              caretColor: "oklch(0.28 0.15 264)",
-            }}
-            data-ocid="compose.textarea"
-          />
+            <button
+              type="button"
+              onClick={() => setComposeMode("letter")}
+              data-ocid="compose.letter_mode_tab"
+              className="flex items-center gap-2 px-5 py-2 font-lora text-sm transition-all"
+              style={{
+                background:
+                  composeMode === "letter"
+                    ? "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))"
+                    : "oklch(0.92 0.04 80)",
+                color:
+                  composeMode === "letter"
+                    ? "oklch(0.97 0.02 80)"
+                    : "oklch(0.42 0.08 52)",
+              }}
+            >
+              ✍️ Write Letter
+            </button>
+            <button
+              type="button"
+              onClick={() => setComposeMode("voice")}
+              data-ocid="compose.voice_mode_tab"
+              className="flex items-center gap-2 px-5 py-2 font-lora text-sm transition-all"
+              style={{
+                background:
+                  composeMode === "voice"
+                    ? "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))"
+                    : "oklch(0.92 0.04 80)",
+                color:
+                  composeMode === "voice"
+                    ? "oklch(0.97 0.02 80)"
+                    : "oklch(0.42 0.08 52)",
+                borderLeft: "1px solid oklch(0.65 0.08 58)",
+              }}
+            >
+              {composeMode === "voice" ? (
+                <Mic className="w-3.5 h-3.5" />
+              ) : (
+                <MicOff className="w-3.5 h-3.5" />
+              )}
+              Voice Note
+            </button>
+          </div>
         </div>
+
+        {/* Letter body or Voice recorder */}
+        <AnimatePresence mode="wait">
+          {composeMode === "letter" ? (
+            <motion.div
+              key="letter"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mb-4"
+            >
+              <Label
+                className="font-playfair text-sm font-semibold block mb-2"
+                style={{ color: "oklch(0.32 0.08 52)" }}
+              >
+                Your Letter:
+              </Label>
+              <Textarea
+                value={letterBody}
+                onChange={(e) => setLetterBody(e.target.value)}
+                placeholder="Dear friend,…"
+                className="parchment-paper rounded-none font-lora resize-none border-0 focus-visible:ring-1 min-h-[220px] text-base leading-7"
+                style={{
+                  color: "oklch(0.22 0.06 50)",
+                  caretColor: "oklch(0.28 0.15 264)",
+                }}
+                data-ocid="compose.textarea"
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="voice"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mb-4"
+            >
+              <Label
+                className="font-playfair text-sm font-semibold block mb-1"
+                style={{ color: "oklch(0.32 0.08 52)" }}
+              >
+                Voice Note:
+              </Label>
+              <div
+                className="parchment-paper border"
+                style={{ borderColor: "oklch(0.65 0.08 58)" }}
+              >
+                <VoiceRecorder onRecorded={setVoiceBlob} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stamp picker */}
         <div className="mb-6">
@@ -258,7 +818,7 @@ export default function ComposeLetter() {
                       color: "white",
                     }}
                   >
-                    &#10003;
+                    ✓
                   </span>
                 )}
                 <p
@@ -281,7 +841,7 @@ export default function ComposeLetter() {
               transition={{ duration: 0.85, ease: "easeIn" }}
               className="absolute top-1/2 left-1/2 text-6xl pointer-events-none z-50"
             >
-              &#9993;
+              {composeMode === "voice" ? "🎙️" : "✉"}
             </motion.div>
           )}
         </AnimatePresence>
@@ -306,9 +866,13 @@ export default function ComposeLetter() {
               <>
                 <Loader2 className="w-4 h-4 animate-spin" /> Dispatching…
               </>
+            ) : composeMode === "voice" ? (
+              <>
+                <Mic className="w-4 h-4" /> Seal &amp; Send Voice Note
+              </>
             ) : (
               <>
-                <span>&#128253;</span> Seal &amp; Send
+                <span>📮</span> Seal &amp; Send
               </>
             )}
           </button>

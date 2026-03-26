@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Principal } from "@icp-sdk/core/principal";
 import { Bell, LogOut, Mail, PenLine, Send, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useCallerProfile, useInbox } from "../hooks/useQueries";
 import ComposeLetter from "./ComposeLetter";
@@ -10,6 +10,30 @@ import Inbox from "./Inbox";
 import Outbox from "./Outbox";
 import ProfilePage from "./ProfilePage";
 
+function playPostalChime() {
+  try {
+    const ctx = new AudioContext();
+    // Three-note ascending chime: E4, G4, B4
+    const notes = [329.63, 392.0, 493.88];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.28;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.25, t + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      osc.start(t);
+      osc.stop(t + 1.2);
+    });
+  } catch {
+    // audio not available
+  }
+}
+
 export default function MainApp() {
   const { identity, clear } = useInternetIdentity();
   const principal = identity?.getPrincipal() as Principal | undefined;
@@ -17,6 +41,52 @@ export default function MainApp() {
   const { data: inbox } = useInbox(principal);
   const [bellAnimating, setBellAnimating] = useState(false);
   const inboxCount = inbox?.length ?? 0;
+
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const hasInitializedRef = useRef(false);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Detect new letters arriving in inbox
+  useEffect(() => {
+    if (!inbox) return;
+
+    const currentIds = (inbox as bigint[]).map((id) => id.toString());
+
+    if (!hasInitializedRef.current) {
+      // First load — seed the seen set without firing notifications
+      for (const id of currentIds) {
+        seenIdsRef.current.add(id);
+      }
+      hasInitializedRef.current = true;
+      return;
+    }
+
+    // Check for new letters
+    for (const id of currentIds) {
+      if (!seenIdsRef.current.has(id)) {
+        // New letter detected — fire notification + chime
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("📬 Postman has a letter for you!", {
+            body: "A new letter has arrived. Sign to receive it.",
+            icon: "/favicon.ico",
+          });
+        }
+        playPostalChime();
+        break; // Only fire once per batch of new letters
+      }
+    }
+
+    // Update seen set
+    for (const id of currentIds) {
+      seenIdsRef.current.add(id);
+    }
+  }, [inbox]);
 
   useEffect(() => {
     if (inboxCount > 0) {

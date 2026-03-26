@@ -26,18 +26,42 @@ export interface UserProfile {
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface LetterDetail {
+  'id' : bigint,
+  'from' : Principal,
+  'to' : Principal,
+  'body' : string,
+  'stamp' : StampType,
+  'timestamp' : bigint,
+  'signed' : boolean,
+}
+export interface UserSearchResult {
+  'name' : string,
+  'city' : string,
+  'username' : string,
+  'principal' : Principal,
+}
+export type SetUsernameResult = { 'ok' : null } |
+  { 'error' : string };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'checkUsernameAvailable' : ActorMethod<[string], boolean>,
+  'findUserByUsername' : ActorMethod<[string], [] | [UserSearchResult]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getInbox' : ActorMethod<[{ 'userId' : Principal }], Array<LetterId>>,
+  'getLetter' : ActorMethod<[bigint], [] | [LetterDetail]>,
+  'getLetterSignature' : ActorMethod<[bigint], [] | [string]>,
+  'getMyUsername' : ActorMethod<[], [] | [string]>,
   'getOutbox' : ActorMethod<[{ 'userId' : Principal }], Array<LetterId>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'searchProfilesByName' : ActorMethod<[string], Array<Profile>>,
   'sendLetter' : ActorMethod<[Principal, string, StampType], bigint>,
+  'setUsername' : ActorMethod<[string], SetUsernameResult>,
+  'signLetter' : ActorMethod<[bigint, string], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

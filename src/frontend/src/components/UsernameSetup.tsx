@@ -68,7 +68,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
   const errors = validateUsername(username);
   const isValid = errors.length === 0;
 
-  // Debounce availability check
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isValid) setDebouncedUsername(username);
@@ -116,7 +115,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
       }}
       data-ocid="username_setup.section"
     >
-      {/* Decorative postmark rings */}
       <div
         className="absolute top-16 right-16 w-32 h-32 rounded-full opacity-10 pointer-events-none"
         style={{ border: "3px solid oklch(0.42 0.10 48)" }}
@@ -136,7 +134,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full max-w-md"
       >
-        {/* Header */}
         <div className="text-center mb-8">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -160,7 +157,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
           </p>
         </div>
 
-        {/* Card */}
         <div
           className="p-8 vintage-border space-y-6"
           style={{
@@ -170,7 +166,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
               "6px 6px 0 oklch(0.65 0.08 58 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.6)",
           }}
         >
-          {/* Input */}
           <div className="space-y-2">
             <label
               htmlFor="username-input"
@@ -210,7 +205,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
                 autoComplete="off"
                 autoFocus
               />
-              {/* Availability indicator */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
                 {touched && isValid && checkingAvailability && (
                   <Loader2
@@ -233,7 +227,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
               </div>
             </div>
 
-            {/* Availability message */}
             {touched && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -245,7 +238,7 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
                     style={{ color: "oklch(0.45 0.18 22)" }}
                     data-ocid="username_setup.error_state"
                   >
-                    ✗ Username already taken
+                    Username already taken
                   </span>
                 )}
                 {showAvailability && isAvailable === true && (
@@ -253,14 +246,13 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
                     style={{ color: "oklch(0.42 0.14 145)" }}
                     data-ocid="username_setup.success_state"
                   >
-                    ✓ Username is available!
+                    Username is available!
                   </span>
                 )}
               </motion.div>
             )}
           </div>
 
-          {/* Validation rules */}
           <div
             className="space-y-2 p-4"
             style={{
@@ -291,7 +283,6 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
             />
           </div>
 
-          {/* Submit */}
           <button
             type="button"
             onClick={handleSubmit}
@@ -309,10 +300,10 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
             {setUsername_.isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Registering your handle…
+                Registering your handle...
               </>
             ) : (
-              <>📬 Claim This Username</>
+              <>Claim This Username</>
             )}
           </button>
 
@@ -320,7 +311,7 @@ export default function UsernameSetup({ onSuccess }: UsernameSetupProps) {
             className="text-center font-lora italic text-xs"
             style={{ color: "oklch(0.55 0.07 56)" }}
           >
-            You can change this after 14 days (up to 5 times per year)
+            You can change your username anytime
           </p>
         </div>
       </motion.div>

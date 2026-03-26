@@ -83,10 +83,14 @@ function AppInner() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const { isFetching: actorLoading } = useActor();
-  const actorError = false;
   const qc = useQueryClient();
 
-  const { data: username, isLoading: usernameLoading } = useMyUsername();
+  const {
+    data: username,
+    isLoading: usernameLoading,
+    isError: usernameError,
+    refetch: refetchUsername,
+  } = useMyUsername();
 
   if (isInitializing) {
     return <LoadingScreen message="Opening post office..." />;
@@ -100,20 +104,25 @@ function AppInner() {
     return <LoadingScreen message="Opening post office..." />;
   }
 
-  if (actorError) {
-    return (
-      <ErrorScreen
-        onRetry={() => qc.invalidateQueries({ queryKey: ["actor"] })}
-      />
-    );
-  }
-
   if (usernameLoading) {
     return <LoadingScreen message="Loading your account..." />;
   }
 
-  // No username (or fetch returned null) → show setup screen
-  if (!username) {
+  // If the username fetch failed (network error), show retry screen
+  // Do NOT show the username setup screen — the user may already have a username
+  if (usernameError) {
+    return (
+      <ErrorScreen
+        onRetry={() => {
+          qc.invalidateQueries({ queryKey: ["actor"] });
+          refetchUsername();
+        }}
+      />
+    );
+  }
+
+  // username is null only when the backend confirmed no username is set
+  if (username === null || username === undefined) {
     return (
       <UsernameSetup
         onSuccess={() => qc.invalidateQueries({ queryKey: ["myUsername"] })}

@@ -101,6 +101,9 @@ export function useSendLetter() {
   });
 }
 
+// Special sentinel: username fetch failed (network/timeout) vs "no username set"
+export const USERNAME_FETCH_FAILED = "__FETCH_FAILED__";
+
 export function useMyUsername() {
   const { actor, isFetching } = useActor();
   return useQuery<string | null>({
@@ -109,14 +112,17 @@ export function useMyUsername() {
       if (!actor) return null;
       try {
         const result = await withTimeout(actor.getMyUsername(), 12000);
-        return result;
+        // result is string | null from backend.d.ts
+        return result ?? null;
       } catch {
-        // If backend times out or errors, treat as no username (not a fatal error)
-        return null;
+        // Throw so react-query retries, rather than returning null
+        // which would incorrectly show the username setup screen
+        throw new Error("Username fetch failed");
       }
     },
     enabled: !!actor && !isFetching,
-    retry: 1,
+    retry: 3,
+    retryDelay: 2000,
     staleTime: 60000,
   });
 }

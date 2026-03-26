@@ -26,27 +26,17 @@ export function useActor() {
 
       const actor = await createActorWithConfig(actorOptions);
 
-      // Fire-and-forget: do NOT await this -- it can hang and block the whole app
-      try {
-        const adminToken = getSecretParameter("caffeineAdminToken") || "";
-        const timeout = new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error("admin init timeout")), 5000),
-        );
-        Promise.race([
-          actor._initializeAccessControlWithSecret(adminToken),
-          timeout,
-        ]).catch(() => {
-          // Silently ignore -- admin init is optional
-        });
-      } catch {
-        // Silently ignore
-      }
+      // Fire-and-forget: do NOT await this -- it must never block the actor from being returned
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      actor._initializeAccessControlWithSecret(adminToken).catch(() => {
+        // silently ignore -- non-critical
+      });
 
       return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
-    retry: 2,
+    retry: 1,
   });
 
   useEffect(() => {

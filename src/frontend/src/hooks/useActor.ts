@@ -26,9 +26,8 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      // Fire-and-forget: never await this call so it cannot block or crash actor setup
       const adminToken = getSecretParameter("caffeineAdminToken") || "";
-      actor._initializeAccessControlWithSecret(adminToken).catch(() => {});
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
     // Only refetch when identity changes

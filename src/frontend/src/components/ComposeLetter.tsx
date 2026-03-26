@@ -885,7 +885,7 @@ export default function ComposeLetter() {
                             color: "white",
                           }}
                         >
-                          \u2713
+                          ✓
                         </span>
                       )}
                     </div>
@@ -954,7 +954,7 @@ export default function ComposeLetter() {
               </>
             ) : (
               <>
-                <span>\uD83D\uDCEE</span> Seal &amp; Send
+                <span>📮</span> Seal &amp; Send
               </>
             )}
           </button>

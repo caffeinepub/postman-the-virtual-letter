@@ -196,9 +196,7 @@ export function useSendFriendRequest() {
   return useMutation<FriendRequestResult, Error, string>({
     mutationFn: async (username: string) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).sendFriendRequest(
-        username,
-      ) as Promise<FriendRequestResult>;
+      return actor.sendFriendRequest(username) as Promise<FriendRequestResult>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
@@ -212,9 +210,7 @@ export function useAcceptFriendRequest() {
   return useMutation<boolean, Error, Principal>({
     mutationFn: async (fromPrincipal: Principal) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).acceptFriendRequest(
-        fromPrincipal,
-      ) as Promise<boolean>;
+      return actor.acceptFriendRequest(fromPrincipal) as Promise<boolean>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] });
@@ -229,9 +225,7 @@ export function useDeclineFriendRequest() {
   return useMutation<boolean, Error, Principal>({
     mutationFn: async (fromPrincipal: Principal) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).declineFriendRequest(
-        fromPrincipal,
-      ) as Promise<boolean>;
+      return actor.declineFriendRequest(fromPrincipal) as Promise<boolean>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pendingFriendRequests"] });
@@ -245,7 +239,7 @@ export function useRemoveFriend() {
   return useMutation<boolean, Error, Principal>({
     mutationFn: async (friendPrincipal: Principal) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).removeFriend(friendPrincipal) as Promise<boolean>;
+      return actor.removeFriend(friendPrincipal) as Promise<boolean>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["friends"] });
@@ -259,7 +253,7 @@ export function useGetFriends() {
     queryKey: ["friends"],
     queryFn: async (): Promise<FriendEntry[]> => {
       if (!actor) return [];
-      return (actor as any).getFriends() as Promise<FriendEntry[]>;
+      return actor.getFriends() as Promise<FriendEntry[]>;
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 30000,
@@ -272,9 +266,7 @@ export function useGetPendingFriendRequests() {
     queryKey: ["pendingFriendRequests"],
     queryFn: async (): Promise<FriendEntry[]> => {
       if (!actor) return [];
-      return (actor as any).getPendingFriendRequests() as Promise<
-        FriendEntry[]
-      >;
+      return actor.getPendingFriendRequests() as Promise<FriendEntry[]>;
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 30000,

@@ -116,6 +116,11 @@ export interface UserSearchResult {
     principal: Principal;
 }
 export type SetUsernameResult = { __kind__: "ok" } | { __kind__: "error"; value: string };
+export interface FriendEntry {
+    username: string;
+    principal: Principal;
+}
+export type FriendRequestResult = { __kind__: "ok" } | { __kind__: "error"; value: string };
 export enum StampType {
     indian = "indian",
     pakistani = "pakistani"
@@ -148,6 +153,12 @@ export interface backendInterface {
     sendLetter(to: Principal, body: string, stamp: StampType): Promise<bigint>;
     setUsername(username: string): Promise<SetUsernameResult>;
     signLetter(letterId: bigint, signatureData: string): Promise<boolean>;
+    sendFriendRequest(toUsername: string): Promise<FriendRequestResult>;
+    acceptFriendRequest(fromPrincipal: Principal): Promise<boolean>;
+    declineFriendRequest(fromPrincipal: Principal): Promise<boolean>;
+    removeFriend(friendPrincipal: Principal): Promise<boolean>;
+    getFriends(): Promise<Array<FriendEntry>>;
+    getPendingFriendRequests(): Promise<Array<FriendEntry>>;
 }
 import type { StampType as _StampType, UserProfile as _UserProfile, UserRole as _UserRole, LetterDetail as _LetterDetail, UserSearchResult as _UserSearchResult, SetUsernameResult as _SetUsernameResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -404,7 +415,28 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+
+    async sendFriendRequest(arg0: string): Promise<FriendRequestResult> {
+        const result = await this.actor.sendFriendRequest(arg0);
+        return 'ok' in result ? { __kind__: 'ok' } : { __kind__: 'error', value: result.error };
+    }
+    async acceptFriendRequest(arg0: Principal): Promise<boolean> {
+        return this.actor.acceptFriendRequest(arg0);
+    }
+    async declineFriendRequest(arg0: Principal): Promise<boolean> {
+        return this.actor.declineFriendRequest(arg0);
+    }
+    async removeFriend(arg0: Principal): Promise<boolean> {
+        return this.actor.removeFriend(arg0);
+    }
+    async getFriends(): Promise<Array<FriendEntry>> {
+        return this.actor.getFriends();
+    }
+    async getPendingFriendRequests(): Promise<Array<FriendEntry>> {
+        return this.actor.getPendingFriendRequests();
+    }
 }
+
 function from_candid_UserRole_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n5(_uploadFile, _downloadFile, value);
 }

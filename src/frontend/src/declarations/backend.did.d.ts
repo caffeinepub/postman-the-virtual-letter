@@ -34,6 +34,7 @@ export interface LetterDetail {
   'stamp' : StampType,
   'timestamp' : bigint,
   'signed' : boolean,
+  'deliveryTime' : bigint,
 }
 export interface UserSearchResult {
   'name' : string,
@@ -42,6 +43,12 @@ export interface UserSearchResult {
   'principal' : Principal,
 }
 export type SetUsernameResult = { 'ok' : null } |
+  { 'error' : string };
+export interface FriendEntry {
+  'username' : string,
+  'principal' : Principal,
+}
+export type FriendRequestResult = { 'ok' : null } |
   { 'error' : string };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
@@ -62,6 +69,12 @@ export interface _SERVICE {
   'sendLetter' : ActorMethod<[Principal, string, StampType], bigint>,
   'setUsername' : ActorMethod<[string], SetUsernameResult>,
   'signLetter' : ActorMethod<[bigint, string], boolean>,
+  'sendFriendRequest' : ActorMethod<[string], FriendRequestResult>,
+  'acceptFriendRequest' : ActorMethod<[Principal], boolean>,
+  'declineFriendRequest' : ActorMethod<[Principal], boolean>,
+  'removeFriend' : ActorMethod<[Principal], boolean>,
+  'getFriends' : ActorMethod<[], Array<FriendEntry>>,
+  'getPendingFriendRequests' : ActorMethod<[], Array<FriendEntry>>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

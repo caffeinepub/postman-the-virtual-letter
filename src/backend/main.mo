@@ -140,39 +140,10 @@ actor {
       case (null) {};
     };
 
-    let now : Int = Time.now();
-    let dayNs : Int = 24 * 60 * 60 * 1_000_000_000;
-    let fourteenDaysNs : Int = 14 * dayNs;
-    let yearNs : Int = 365 * dayNs;
-
-    switch (usernameChangeTimes.get(caller)) {
-      case (?times) {
-        if (times.size() > 0) {
-          let lastChange = times[times.size() - 1];
-          if (now - lastChange < fourteenDaysNs) {
-            return #error("too_soon");
-          };
-        };
-        var recentCount = 0;
-        var recentTimes : [Int] = [];
-        for (t in times.vals()) {
-          if (now - t < yearNs) {
-            recentCount += 1;
-            recentTimes := recentTimes.concat([t]);
-          };
-        };
-        if (recentCount >= 5) {
-          return #error("limit_reached");
-        };
-        switch (usernames.get(caller)) {
-          case (?old) { usernameIndex.remove(old); };
-          case (null) {};
-        };
-        usernameChangeTimes.add(caller, recentTimes.concat([now]));
-      };
-      case (null) {
-        usernameChangeTimes.add(caller, [now]);
-      };
+    // Remove old username from index if exists
+    switch (usernames.get(caller)) {
+      case (?old) { usernameIndex.remove(old); };
+      case (null) {};
     };
 
     usernames.add(caller, lower);

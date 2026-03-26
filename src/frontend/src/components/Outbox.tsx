@@ -2,7 +2,11 @@ import type { Principal } from "@icp-sdk/core/principal";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import { useGetLetterSignature, useOutbox } from "../hooks/useQueries";
+import {
+  useGetLetter,
+  useGetLetterSignature,
+  useOutbox,
+} from "../hooks/useQueries";
 import { getDelivery } from "../lib/deliveryStore";
 import DeliveryTracker from "./DeliveryTracker";
 
@@ -15,7 +19,16 @@ function LetterRow({ letterId, index }: { letterId: bigint; index: number }) {
   const [expanded, setExpanded] = useState(true);
   const [receiptExpanded, setReceiptExpanded] = useState(false);
   const { data: signatureData } = useGetLetterSignature(letterId);
+  const { data: letterDetail } = useGetLetter(letterId);
   const isSigned = !!signatureData;
+  const isVoiceNote = (letterDetail?.body ?? "").startsWith("VOICE_NOTE:");
+  const bodyPreview = isVoiceNote
+    ? "Voice note recorded"
+    : (letterDetail?.body ?? "").slice(0, 80) +
+      ((letterDetail?.body?.length ?? 0) > 80 ? "…" : "");
+  const sentDate = letterDetail?.timestamp
+    ? new Date(Number(letterDetail.timestamp / 1_000_000n)).toLocaleDateString()
+    : null;
 
   return (
     <motion.div
@@ -35,6 +48,17 @@ function LetterRow({ letterId, index }: { letterId: bigint; index: number }) {
             >
               Letter #{String(letterId).padStart(4, "0")}
             </p>
+            {letterDetail && (
+              <span
+                className="inline-flex items-center gap-1 text-xs font-lora px-2 py-0.5 rounded-full"
+                style={{
+                  background: "oklch(0.90 0.06 220)",
+                  color: "oklch(0.28 0.07 220)",
+                }}
+              >
+                {isVoiceNote ? "🎙️ Voice Note" : "📝 Letter"}
+              </span>
+            )}
             {isSigned && (
               <span
                 className="inline-flex items-center gap-1 text-xs font-lora px-2 py-0.5 rounded-full"
@@ -48,6 +72,22 @@ function LetterRow({ letterId, index }: { letterId: bigint; index: number }) {
               </span>
             )}
           </div>
+          {bodyPreview && (
+            <p
+              className="font-lora text-xs mt-0.5 truncate"
+              style={{ color: "oklch(0.45 0.07 55)" }}
+            >
+              {bodyPreview}
+            </p>
+          )}
+          {sentDate && (
+            <p
+              className="font-lora text-xs"
+              style={{ color: "oklch(0.58 0.06 58)" }}
+            >
+              {sentDate}
+            </p>
+          )}
           {delivery ? (
             <p
               className="font-lora italic text-xs mt-0.5"

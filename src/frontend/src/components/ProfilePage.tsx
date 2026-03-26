@@ -108,7 +108,9 @@ export default function ProfilePage({ defaultAddFriend }: Props) {
         setUsernameTouched(false);
       } else if (result.__kind__ === "error") {
         if (result.value === "too_soon") {
-          toast.error("You can only change your username after 14 days.");
+          toast.error(
+            "Username change is currently unavailable. Please try again later.",
+          );
         } else if (result.value === "limit_reached") {
           toast.error(
             "You've reached the limit of 5 username changes per year.",
@@ -357,7 +359,7 @@ export default function ProfilePage({ defaultAddFriend }: Props) {
           className="font-lora italic text-xs"
           style={{ color: "oklch(0.52 0.07 56)" }}
         >
-          Allowed after 14 days · Max 5 changes per year
+          Choose a unique username
         </p>
         <div className="space-y-2">
           <Label

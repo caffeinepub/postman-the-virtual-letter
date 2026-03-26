@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { Textarea } from "@/components/ui/textarea";
 import type { Principal } from "@icp-sdk/core/principal";
 import {
@@ -10,7 +10,6 @@ import {
   MicOff,
   Play,
   RotateCcw,
-  Search,
   Square,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -20,7 +19,6 @@ import { StampType } from "../backend.d";
 import {
   useCallerProfile,
   useFindUserByUsername,
-  useSearchProfiles,
   useSendLetter,
 } from "../hooks/useQueries";
 import { saveDelivery } from "../lib/deliveryStore";
@@ -305,7 +303,6 @@ function VoiceRecorder({
 
 export default function ComposeLetter() {
   const [composeMode, setComposeMode] = useState<"letter" | "voice">("letter");
-  const [recipientSearch, setRecipientSearch] = useState("");
   const [usernameSearch, setUsernameSearch] = useState("");
   const [selectedRecipient, setSelectedRecipient] = useState<{
     name: string;
@@ -318,11 +315,10 @@ export default function ComposeLetter() {
   const [selectedStamp, setSelectedStamp] = useState<StampType>(
     StampType.indian,
   );
-  const [showDropdown, setShowDropdown] = useState(false);
   const [envelopeFlying, setEnvelopeFlying] = useState(false);
 
   const { data: callerProfile } = useCallerProfile();
-  const { data: searchResults } = useSearchProfiles(recipientSearch);
+
   const findByUsername = useFindUserByUsername();
   const sendLetter = useSendLetter();
 
@@ -412,7 +408,7 @@ export default function ComposeLetter() {
         setLetterBody("");
         setVoiceBlob(null);
         setSelectedRecipient(null);
-        setRecipientSearch("");
+        setSelectedRecipient(null);
         setUsernameSearch("");
         setComposeMode("letter");
       }, 1000);
@@ -480,7 +476,7 @@ export default function ComposeLetter() {
                 type="button"
                 onClick={() => {
                   setSelectedRecipient(null);
-                  setRecipientSearch("");
+                  setSelectedRecipient(null);
                   setUsernameSearch("");
                   findByUsername.reset();
                 }}
@@ -491,166 +487,66 @@ export default function ComposeLetter() {
               </button>
             </div>
           ) : (
-            <Tabs defaultValue="name" data-ocid="compose.recipient_tab">
-              <TabsList
-                className="w-full rounded-none mb-3"
-                style={{
-                  background: "oklch(0.88 0.04 78)",
-                  border: "1px solid oklch(0.65 0.08 58)",
-                }}
-              >
-                <TabsTrigger
-                  value="name"
-                  className="flex-1 rounded-none font-lora text-sm data-[state=active]:bg-transparent"
-                  style={{ color: "oklch(0.32 0.08 52)" }}
-                  data-ocid="compose.search_by_name_tab"
-                >
-                  <Search className="w-3.5 h-3.5 mr-1.5" />
-                  Search by Name
-                </TabsTrigger>
-                <TabsTrigger
-                  value="username"
-                  className="flex-1 rounded-none font-lora text-sm data-[state=active]:bg-transparent"
-                  style={{ color: "oklch(0.32 0.08 52)" }}
-                  data-ocid="compose.find_by_username_tab"
-                >
-                  <AtSign className="w-3.5 h-3.5 mr-1.5" />
-                  Find by Username
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Search by Name */}
-              <TabsContent value="name" className="mt-0">
-                <div className="relative">
-                  <Search
+            <div>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <AtSign
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
                     style={{ color: "oklch(0.52 0.07 56)" }}
                   />
                   <Input
-                    value={recipientSearch}
-                    onChange={(e) => {
-                      setRecipientSearch(e.target.value);
-                      setShowDropdown(true);
+                    value={usernameSearch}
+                    onChange={(e) => setUsernameSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleFindByUsername();
                     }}
-                    onFocus={() => setShowDropdown(true)}
-                    placeholder="Search recipient by name…"
+                    placeholder="e.g. ranjit_42"
                     className="pl-9 rounded-none font-lora bg-transparent"
                     style={{
                       borderColor: "oklch(0.65 0.08 58)",
                       color: "oklch(0.28 0.07 52)",
                     }}
-                    data-ocid="compose.search_input"
+                    data-ocid="compose.username_input"
                   />
-                  <AnimatePresence>
-                    {showDropdown &&
-                      searchResults &&
-                      searchResults.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          className="absolute z-50 top-full left-0 right-0 border shadow-parchment"
-                          style={{
-                            background: "oklch(0.96 0.035 82)",
-                            borderColor: "oklch(0.65 0.08 58)",
-                          }}
-                          data-ocid="compose.dropdown_menu"
-                        >
-                          {searchResults.map((p) => (
-                            <button
-                              type="button"
-                              key={p.name}
-                              onClick={() => {
-                                setSelectedRecipient({
-                                  name: p.name,
-                                  city: p.city,
-                                });
-                                setShowDropdown(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 font-lora text-sm hover:bg-secondary transition-colors"
-                              style={{ color: "oklch(0.28 0.07 52)" }}
-                            >
-                              <span className="font-semibold">{p.name}</span>
-                              {p.city && (
-                                <span
-                                  className="ml-2 text-xs"
-                                  style={{ color: "oklch(0.52 0.07 56)" }}
-                                >
-                                  &mdash; {p.city}
-                                </span>
-                              )}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                  </AnimatePresence>
                 </div>
-              </TabsContent>
-
-              {/* Find by Username */}
-              <TabsContent value="username" className="mt-0">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <AtSign
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-                      style={{ color: "oklch(0.52 0.07 56)" }}
-                    />
-                    <Input
-                      value={usernameSearch}
-                      onChange={(e) => setUsernameSearch(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleFindByUsername();
-                      }}
-                      placeholder="e.g. ranjit_42"
-                      className="pl-9 rounded-none font-lora bg-transparent"
-                      style={{
-                        borderColor: "oklch(0.65 0.08 58)",
-                        color: "oklch(0.28 0.07 52)",
-                      }}
-                      data-ocid="compose.username_input"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleFindByUsername}
-                    disabled={
-                      findByUsername.isPending || !usernameSearch.trim()
-                    }
-                    data-ocid="compose.find_username_button"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 font-lora text-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
-                      color: "oklch(0.97 0.02 80)",
-                      border: "1px solid oklch(0.55 0.09 52)",
-                    }}
-                  >
-                    {findByUsername.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      "Find"
-                    )}
-                  </button>
-                </div>
-                {findByUsername.isSuccess && !findByUsername.data && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-2 text-xs font-lora"
-                    style={{ color: "oklch(0.40 0.15 22)" }}
-                    data-ocid="compose.username_not_found_error_state"
-                  >
-                    No user found with that username.
-                  </motion.p>
-                )}
-                <p
-                  className="mt-2 text-xs font-lora italic"
-                  style={{ color: "oklch(0.55 0.07 58)" }}
+                <button
+                  type="button"
+                  onClick={handleFindByUsername}
+                  disabled={findByUsername.isPending || !usernameSearch.trim()}
+                  data-ocid="compose.find_username_button"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 font-lora text-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                  style={{
+                    background:
+                      "linear-gradient(135deg, oklch(0.42 0.10 48), oklch(0.30 0.08 52))",
+                    color: "oklch(0.97 0.02 80)",
+                    border: "1px solid oklch(0.55 0.09 52)",
+                  }}
                 >
-                  Ask your friend for their username from their Profile page.
-                </p>
-              </TabsContent>
-            </Tabs>
+                  {findByUsername.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Find"
+                  )}
+                </button>
+              </div>
+              {findByUsername.isSuccess && !findByUsername.data && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-2 text-xs font-lora"
+                  style={{ color: "oklch(0.40 0.15 22)" }}
+                  data-ocid="compose.username_not_found_error_state"
+                >
+                  No user found with that username.
+                </motion.p>
+              )}
+              <p
+                className="mt-2 text-xs font-lora italic"
+                style={{ color: "oklch(0.55 0.07 58)" }}
+              >
+                Ask your friend for their username from their Profile page.
+              </p>
+            </div>
           )}
         </div>
 

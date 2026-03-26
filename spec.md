@@ -1,32 +1,30 @@
 # POSTMAN - The Virtual Letter
 
 ## Current State
-- Backend: Motoko canister with user profiles, username system, letter sending/signing, inbox/outbox. No friend system methods exist in backend. No delivery timer stored in backend.
-- Frontend: Inbox shows all letters and allows opening immediately (no delivery gate). ProfilePage shows username card (no copy/share buttons) and change-username form (no friends list). DeliveryStore tracks delivery timing only in sender's localStorage.
+The app has several bugs:
+1. useActor.ts awaits `_initializeAccessControlWithSecret` (already fixed in this session)
+2. ComposeLetter has a "Search by Name" tab that sets a recipient without a principal, causing "Could not resolve recipient address" error
+3. Outbox shows letters as bare IDs with no letter content/details visible
+4. Backend and frontend enforce a 14-day cooldown for username changes
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `deliveryTime: Int` field on `Letter` and `LetterDetail` — set to `Time.now() + random(1-120) * 1_000_000_000` when letter is sent
-- Backend: Full friend system — send/accept/decline/remove friend requests, list friends and pending requests
-- Frontend: Delivery lock screen in Inbox — if current time < deliveryTime, show animated "postman is on the way" screen with countdown timer; letter content is fully locked until timer expires
-- Frontend: Friends list section in ProfilePage — shows accepted friends with username, remove button
-- Frontend: Copy button and Share button on username card in ProfilePage — Copy copies @username to clipboard; Share shares a link like `?addUser=username`
-- Frontend: On app load, detect `?addUser=username` URL param and navigate to a pre-filled friend search
+- Fetch full LetterDetail in Outbox LetterRow to show body preview and type (letter vs voice note)
 
 ### Modify
-- Backend: `sendLetter` — also set `deliveryTime` on the new letter
-- Backend: `LetterDetail` — add `deliveryTime: Int` field
-- Frontend: Inbox `LetterOpener` — check `deliveryTime` vs current time before showing sign/reveal flow
-- Frontend: ProfilePage — add friends list section below change-username section
+- ComposeLetter: Remove the Tabs (Search by Name / Find by Username). Replace with a single username search input (no tabs). The recipient section should only show username search.
+- Outbox LetterRow: Call `useGetLetter(letterId)` to fetch letter details and display: whether it's a voice note or letter, a body snippet, timestamp
+- ProfilePage: Remove "Allowed after 14 days" text. Remove `too_soon` error handler. Make the change button always enabled (when username is valid and available)
+- Backend main.mo: Remove the 14-day check from setUsername (the `if (now - lastChange < fourteenDaysNs)` block)
 
 ### Remove
-- Nothing removed
+- Name-based search tab and related state (recipientSearch, showDropdown, searchResults, useSearchProfiles import) from ComposeLetter
+- 14-day cooldown check from backend setUsername function
+- 14-day restriction UI text from ProfilePage
 
 ## Implementation Plan
-1. Regenerate backend with deliveryTime on letters and full friend system methods
-2. Update frontend bindings (backend.d.ts, declarations)
-3. Update Inbox.tsx to gate on deliveryTime
-4. Update ProfilePage.tsx to add friends list and copy/share on username
-5. Update useQueries.ts to add friend hooks
-6. Handle ?addUser= URL param in App.tsx or MainApp.tsx
+1. Edit ComposeLetter.tsx: remove tabs, name search state, show only username search box directly
+2. Edit Outbox.tsx: add useGetLetter hook call per row, display body preview
+3. Edit ProfilePage.tsx: remove 14-day restriction copy and `too_soon` handler
+4. Edit backend main.mo: remove 14-day check
